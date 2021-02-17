@@ -39,7 +39,7 @@ class BclEventHandler(FileSystemEventHandler):
 
 def main(path):
     """
-        Watch a directory for a creation of CopyComplete.txt files
+        Watches a directory for CopyComplete.txt files
     """
     # Setup logging
     logging.basicConfig(
