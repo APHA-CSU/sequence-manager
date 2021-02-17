@@ -10,7 +10,7 @@ from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEve
 
 class BclEventHandler(FileSystemEventHandler):
     """
-        Handles Copy events from
+        Handles CopyComplete.txt created events 
     """
 
     def __init__(self, copy_complete_filename='CopyComplete.txt'):
@@ -22,6 +22,7 @@ class BclEventHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         """Called when a file or directory is created.
+            TODO: Convert to fastq, upload to AWS, ...
 
         :param event:
             Event representing file/directory creation.
@@ -29,7 +30,7 @@ class BclEventHandler(FileSystemEventHandler):
             :class:`DirCreatedEvent` or :class:`FileCreatedEvent`
         """
 
-        # Check the file
+        # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
             return
 
@@ -37,15 +38,20 @@ class BclEventHandler(FileSystemEventHandler):
 
 
 def main(path):
+    """
+        Watch a directory for a creation of CopyComplete.txt files
+    """
+    # Setup logging
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
 
-    event_handler = BclEventHandler()
-
+    # Start the watcher in a new thread
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
+    observer.schedule(BclEventHandler(), path, recursive=True)
     observer.start()
+
+    # Sleep till exit
     try:
         while True:
             time.sleep(1)
