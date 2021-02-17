@@ -34,7 +34,7 @@ class BclEventHandler(FileSystemEventHandler):
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
             return
 
-        print('New Illumina Plate Transferred')
+        logging.info('New Illumina Plate Transferred')
 
 
 def main(path):
@@ -42,13 +42,22 @@ def main(path):
         Watch a directory for a creation of CopyComplete.txt files
     """
     # Setup logging
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.FileHandler('bcl-manager.log'),
+            logging.StreamHandler()
+        ]
+    )
+    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     # Start the watcher in a new thread
     observer = Observer()
     observer.schedule(BclEventHandler(), path, recursive=True)
+
+    logging.info('Starting BCL File Watcher: %s' % path)
     observer.start()
 
     # Sleep till exit
