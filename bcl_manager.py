@@ -27,15 +27,18 @@ class BclEventHandler(FileSystemEventHandler):
         Handles CopyComplete.txt created events 
     """
 
-    def __init__(self, backup_dir, copy_complete_filename='CopyComplete.txt'):
+    def __init__(self, backup_dir, fastq_dir, copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
         # Creation of this file indicates that an Illumina Machine has finished transferring
         # a plate of raw bcl reads
         self.copy_complete_filename = copy_complete_filename
 
-        # Raw Bcl Data backed up here
+        # Raw Bcl Data backed up here (one dir for each plate)
         self.backup_dir = backup_dir
+
+        # Converted Fastq (one dir for each plate)
+        self.fastq_dir = fastq_dir
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -64,7 +67,7 @@ class BclEventHandler(FileSystemEventHandler):
         return True
 
 
-def main(watch_dir, backup_dir):
+def main(watch_dir, backup_dir, fastq_dir):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -98,10 +101,13 @@ def main(watch_dir, backup_dir):
         observer.join()
 
 if __name__ == "__main__":
+    # Parse
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
     parser.add_argument('dir', nargs='?', default='./', help='Watch directory')
     parser.add_argument('--backup-dir', default='./data/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='./fastq-data/', help='Where to backup data to')
 
     args = parser.parse_args()
 
-    main(args.dir, args.backup_dir)
+    # Run
+    main(args.dir, args.backup_dir, args.fastq_dir)
