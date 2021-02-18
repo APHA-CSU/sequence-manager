@@ -10,9 +10,10 @@ class TestBclManager(unittest.TestCase):
         """
             Assert the handler processes the event src_path correctly
         """
-        handler = bcl_manager.BclEventHandler('./', copy_complete_filename='CopyComplete.txt')
+        handler = bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
 
         self.assertEventOutput(handler, False, './notCopyComplete.txt')
+        self.assertEventOutput(handler, False, 'CopyComplete.txt/')
         self.assertEventOutput(handler, True, 'CopyComplete.txt')
         self.assertEventOutput(handler, True, '/some/absolute/path/to/CopyComplete.txt')
 

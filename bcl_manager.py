@@ -55,7 +55,7 @@ class BclEventHandler(FileSystemEventHandler):
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
             return False        
 
-        # TODO: log if anything fail here
+        # TODO: log if anything fails
 
         bcl_directory = os.path.dirname(event.src_path)        
 
@@ -86,7 +86,9 @@ def main(watch_dir, backup_dir, fastq_dir):
 
     # Start the watcher in a new thread
     observer = Observer()
-    observer.schedule(BclEventHandler(backup_dir), watch_dir, recursive=True)
+    handler = BclEventHandler(backup_dir, fastq_dir)
+
+    observer.schedule(handler, watch_dir, recursive=True)
 
     logging.info('Starting BCL File Watcher: %s' % watch_dir)
     observer.start()
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
     parser.add_argument('dir', nargs='?', default='./', help='Watch directory')
     parser.add_argument('--backup-dir', default='./data/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='./fastq-data/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='./fastq-data/', help='Where to put converted fastq data')
 
     args = parser.parse_args()
 
