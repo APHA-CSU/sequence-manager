@@ -8,6 +8,19 @@ from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
 
 
+def convert_to_fastq(from_path, to_path):
+    """ TODO """
+    pass
+
+def copy(from_path, to_path):
+    """ TODO """
+    pass
+
+def upload():
+    """ TODO """
+    pass
+
+
 class BclEventHandler(FileSystemEventHandler):
     """
         Handles CopyComplete.txt created events 
@@ -23,6 +36,8 @@ class BclEventHandler(FileSystemEventHandler):
     def on_created(self, event):
         """Called when a file or directory is created.
 
+        Returns true if a new bcl plate is found, False otherwise
+
         :param event:
             Event representing file/directory creation.
         :type event:
@@ -31,13 +46,18 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
-            return
+            return False
 
         logging.info('New Illumina Plate Transferred')
 
-        # TODO: Convert to fastq,
+        from_path = ""
+        to_path = ""
 
-        # TODO: upload to AWS, ...
+        copy(from_path, to_path)
+        convert_to_fastq(from_path, to_path)
+        upload()
+
+        return True
 
 
 def main(path):
@@ -65,6 +85,7 @@ def main(path):
     observer.start()
 
     # Sleep till exit
+    # TODO: I prefer 'press return to quit'
     try:
         while True:
             time.sleep(1)
