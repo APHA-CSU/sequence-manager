@@ -22,7 +22,6 @@ class BclEventHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         """Called when a file or directory is created.
-            TODO: Convert to fastq, upload to AWS, ...
 
         :param event:
             Event representing file/directory creation.
@@ -36,12 +35,17 @@ class BclEventHandler(FileSystemEventHandler):
 
         logging.info('New Illumina Plate Transferred')
 
+        # TODO: Convert to fastq,
+
+        # TODO: upload to AWS, ...
+
 
 def main(path):
     """
         Watches a directory for CopyComplete.txt files
     """
     # Setup logging
+    # TODO: handler that logs straight to S3
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
