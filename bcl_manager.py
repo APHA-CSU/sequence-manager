@@ -3,6 +3,7 @@ import time
 import logging
 import ntpath
 import argparse
+import os
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -26,12 +27,15 @@ class BclEventHandler(FileSystemEventHandler):
         Handles CopyComplete.txt created events 
     """
 
-    def __init__(self, copy_complete_filename='CopyComplete.txt'):
+    def __init__(self, backup_dir, copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
         # Creation of this file indicates that an Illumina Machine has finished transferring
         # a plate of raw bcl reads
         self.copy_complete_filename = copy_complete_filename
+
+        # Raw Bcl Data backed up here
+        self.backup_dir = backup_dir
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -46,21 +50,21 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
-            return False
+            return False        
 
-        logging.info('New Illumina Plate Transferred')
+        # TODO: log if anything fail here
 
-        from_path = ""
-        to_path = ""
+        bcl_directory = os.path.dirname(event.src_path)        
 
-        copy(from_path, to_path)
-        convert_to_fastq(from_path, to_path)
+        copy(bcl_directory, self.backup_dir)
+        convert_to_fastq(bcl_directory, self.fastq_dir)
         upload()
 
+        logging.info('New Illumina Plate Transferred')
         return True
 
 
-def main(path):
+def main(watch_dir, backup_dir):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -79,9 +83,9 @@ def main(path):
 
     # Start the watcher in a new thread
     observer = Observer()
-    observer.schedule(BclEventHandler(), path, recursive=True)
+    observer.schedule(BclEventHandler(backup_dir), watch_dir, recursive=True)
 
-    logging.info('Starting BCL File Watcher: %s' % path)
+    logging.info('Starting BCL File Watcher: %s' % watch_dir)
     observer.start()
 
     # Sleep till exit
@@ -96,7 +100,8 @@ def main(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
     parser.add_argument('dir', nargs='?', default='./', help='Watch directory')
+    parser.add_argument('--backup-dir', default='./data/', help='Where to backup data to')
 
     args = parser.parse_args()
 
-    main(args.dir)
+    main(args.dir, args.backup_dir)
