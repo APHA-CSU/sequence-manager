@@ -1,5 +1,4 @@
 import unittest
-import unittest.mock
 
 import watchdog
 import bcl_manager
