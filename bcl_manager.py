@@ -63,7 +63,7 @@ class BclEventHandler(FileSystemEventHandler):
         convert_to_fastq(bcl_directory, self.fastq_dir)
         upload()
 
-        logging.info('New Illumina Plate Transferred')
+        logging.info('New Illumina Plate Processed: ' % bcl_directory)
         return True
 
 
@@ -84,23 +84,19 @@ def main(watch_dir, backup_dir, fastq_dir):
     )
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
-    # Start the watcher in a new thread
+    # Setup file watcher in a new thread
     observer = Observer()
     handler = BclEventHandler(backup_dir, fastq_dir)
-
     observer.schedule(handler, watch_dir, recursive=True)
 
+    # Start
     logging.info('Starting BCL File Watcher: %s' % watch_dir)
     observer.start()
 
     # Sleep till exit
-    # TODO: I prefer 'press return to quit'
-    try:
-        while True:
-            time.sleep(1)
-    finally:
-        observer.stop()
-        observer.join()
+    input('Press return to quit')
+    observer.stop()
+    observer.join()
 
 if __name__ == "__main__":
     # Parse
