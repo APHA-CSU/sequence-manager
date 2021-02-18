@@ -28,6 +28,5 @@ class TestBclManager(unittest.TestCase):
         actual_output = handler.on_created(event)        
         self.assertEqual(actual_output, expected_output)
 
-
 if __name__ == '__main__':
     unittest.main()

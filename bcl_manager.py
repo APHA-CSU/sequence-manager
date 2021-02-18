@@ -8,7 +8,6 @@ import os
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
 
-
 def convert_to_fastq(from_path, to_path):
     """ TODO """
     pass
@@ -20,7 +19,6 @@ def copy(from_path, to_path):
 def upload():
     """ TODO """
     pass
-
 
 class BclEventHandler(FileSystemEventHandler):
     """
