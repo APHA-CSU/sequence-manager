@@ -63,7 +63,7 @@ class BclEventHandler(FileSystemEventHandler):
         convert_to_fastq(bcl_directory, self.fastq_dir)
         upload()
 
-        logging.info('New Illumina Plate Processed: ' % bcl_directory)
+        logging.info('New Illumina Plate Processed: %s' % bcl_directory)
         return True
 
 
