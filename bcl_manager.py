@@ -14,7 +14,11 @@ def convert_to_fastq(from_path, to_path):
     pass
 
 def copy(from_path, to_path):
-    return
+    """
+        Copies BclFiles over
+    """
+
+    # TODO: Make sure we are not overwriting anything!
     shutil.copy(from_path, to_path)
 
 def upload():

@@ -1,5 +1,6 @@
 import unittest
 import unittest.mock
+from unittest.mock import Mock
 
 import watchdog
 import bcl_manager
@@ -7,7 +8,7 @@ import bcl_manager
 class TestBclManager(unittest.TestCase):
     def test_handler_construction(self):
         # Output directories exist
-        handler = lambda:  bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
+        bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
 
         # Output directories do not exist 
         with self.assertRaises(Exception):
@@ -20,6 +21,8 @@ class TestBclManager(unittest.TestCase):
         """
             Assert the handler processes the event src_path correctly
         """
+        bcl_manager.shutil.copy = Mock()
+
         handler = bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
 
         self.assertEventOutput(handler, False, './notCopyComplete.txt')
