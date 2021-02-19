@@ -1,6 +1,7 @@
 import unittest
 import unittest.mock
 from unittest.mock import Mock
+import random
 
 import watchdog
 import bcl_manager
@@ -17,18 +18,40 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.BclEventHandler('./', './DOES_NOT_EXIST', copy_complete_filename='CopyComplete.txt')
 
-    def test_bcl_event_handler(self):
+    def test_on_create(self):
         """
             Assert the handler processes the event src_path correctly
         """
-        bcl_manager.shutil.copy = Mock()
+        # Mocking shutil.copytree ensures we don't actually copy anything to disk during testing
+        bcl_manager.shutil.copytree = Mock()
 
         handler = bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
 
+        # Ignores non-CopyComplete events
         self.assertEventOutput(handler, False, './notCopyComplete.txt')
         self.assertEventOutput(handler, False, 'CopyComplete.txt/')
-        self.assertEventOutput(handler, True, 'CopyComplete.txt')
+        
+        # Processes CopyComplete events        
         self.assertEventOutput(handler, True, '/some/absolute/path/to/CopyComplete.txt')
+        self.assertEventOutput(handler, True, './CopyComplete.txt')
+
+        # This should raise an exception during backup, because the destination directory exists
+        
+
+
+        # with self.assertRaises(Exception):
+        #     event = watchdog.events.FileCreatedEvent('../CopyComplete.txt')
+        #     handler.on_created(event)
+
+        # # Throws exception when processing fails 
+        # with self.assertRaises(Exception):
+        #     mock = Mock()
+        #     mock.side_effect = Exception()
+        #     handler.process_bcl_plate = mock
+
+        #     event = watchdog.events.FileCreatedEvent('./')
+        #     handler.on_created(event)
+
 
     def assertEventOutput(self, handler, expected_output, src_path):
         """ 

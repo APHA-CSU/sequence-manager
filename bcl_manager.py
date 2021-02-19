@@ -18,8 +18,15 @@ def copy(from_path, to_path):
         Copies BclFiles over
     """
 
-    # TODO: Make sure we are not overwriting anything!
-    shutil.copy(from_path, to_path)
+    print('from_path', from_path)
+    print('to_path', os.path.abspath(to_path))
+    print('isdir', os.path.isdir(os.path.abspath(to_path)))
+
+    # Make sure we are not overwriting anything!
+    if os.path.isdir(os.path.abspath(to_path)):
+        raise Exception('Cannot backup Bcl, path exists: %s'%to_path)    
+   
+    shutil.copytree(from_path, to_path)
 
 def upload():
     """ TODO """
@@ -38,10 +45,10 @@ class BclEventHandler(FileSystemEventHandler):
         self.copy_complete_filename = copy_complete_filename
 
         # Raw Bcl Data backed up here (one dir for each plate)
-        self.backup_dir = backup_dir
+        self.backup_dir = backup_dir + os.path.join('')
 
         # Converted Fastq (one dir for each plate)
-        self.fastq_dir = fastq_dir
+        self.fastq_dir = fastq_dir + os.path.join('')
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -49,6 +56,20 @@ class BclEventHandler(FileSystemEventHandler):
 
         if not os.path.isdir(self.fastq_dir):
             raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
+
+    def process_bcl_plate(self, src_path):
+        """
+            Processes a bcl plate.
+            Copies, converts to fastq and uploads to AWS
+        """
+        # Get the name of the plate
+        bcl_directory = os.path.dirname(os.path.abspath(src_path))
+        plate_id = os.path.basename(bcl_directory) 
+        
+        # Process
+        copy(bcl_directory, self.backup_dir + plate_id)
+        convert_to_fastq(bcl_directory, self.fastq_dir + plate_id)
+        upload()
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -65,15 +86,15 @@ class BclEventHandler(FileSystemEventHandler):
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
             return False        
 
-        # TODO: log if anything fails
+        # log if anything fails
+        try:
+            self.process_bcl_plate(event.src_path)
 
-        bcl_directory = os.path.dirname(event.src_path)        
+        except Exception as e:
+            logging.exception(e)
+            raise e
 
-        copy(bcl_directory, self.backup_dir)
-        convert_to_fastq(bcl_directory, self.fastq_dir)
-        upload()
-
-        logging.info('New Illumina Plate Processed: %s' % bcl_directory)
+        logging.info('New Illumina Plate Processed: %s' % event.src_path)
         return True
 
 
