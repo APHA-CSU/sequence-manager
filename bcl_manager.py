@@ -17,11 +17,6 @@ def copy(from_path, to_path):
     """
         Copies BclFiles over
     """
-
-    print('from_path', from_path)
-    print('to_path', os.path.abspath(to_path))
-    print('isdir', os.path.isdir(os.path.abspath(to_path)))
-
     # Make sure we are not overwriting anything!
     if os.path.isdir(os.path.abspath(to_path)):
         raise Exception('Cannot backup Bcl, path exists: %s'%to_path)    
