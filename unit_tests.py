@@ -52,6 +52,7 @@ class TestBclManager(unittest.TestCase):
         """
             Asserts the copy method does not overwrite
         """
+        # Mocking shutil.copytree prevents any actual data from being copy
         bcl_manager.shutil.copytree = Mock() 
 
         with self.assertRaises(Exception):
@@ -69,6 +70,10 @@ class TestBclManager(unittest.TestCase):
         # Test Output
         actual_output = handler.on_created(event)        
         self.assertEqual(actual_output, expected_output)
+
+        # Ensure we log successes
+        if actual_output:
+            self.assertTrue(bcl_manager.logging.info.called)
 
 if __name__ == '__main__':
     unittest.main()
