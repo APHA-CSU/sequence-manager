@@ -36,21 +36,13 @@ class TestBclManager(unittest.TestCase):
         self.assertEventOutput(handler, True, './CopyComplete.txt')
 
         # This should raise an exception during backup, because the destination directory exists
-        
+        mock = Mock()
+        mock.side_effect = Exception('Error processing Bcl plate')
+        handler.process_bcl_plate = mock
 
-
-        # with self.assertRaises(Exception):
-        #     event = watchdog.events.FileCreatedEvent('../CopyComplete.txt')
-        #     handler.on_created(event)
-
-        # # Throws exception when processing fails 
-        # with self.assertRaises(Exception):
-        #     mock = Mock()
-        #     mock.side_effect = Exception()
-        #     handler.process_bcl_plate = mock
-
-        #     event = watchdog.events.FileCreatedEvent('./')
-        #     handler.on_created(event)
+        with self.assertRaises(Exception):
+            event = watchdog.events.FileCreatedEvent('./CopyComplete.txt')
+            handler.on_created(event)
 
 
     def assertEventOutput(self, handler, expected_output, src_path):
