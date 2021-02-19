@@ -15,7 +15,7 @@ def convert_to_fastq(from_path, to_path):
 
 def copy(from_path, to_path):
     """
-        Copies BclFiles over
+        Backup BclFiles over
     """
     # Make sure we are not overwriting anything!
     if os.path.isdir(os.path.abspath(to_path)):

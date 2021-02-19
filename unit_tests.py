@@ -11,7 +11,7 @@ class TestBclManager(unittest.TestCase):
         # Succeeds when output directories exist
         bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
 
-        # Raises exception when output directories do not exist 
+        # Raises exceptions when output directories do not exist 
         with self.assertRaises(Exception):
             bcl_manager.BclEventHandler('./DOES_NOT_EXIST', './', copy_complete_filename='CopyComplete.txt')
 
@@ -22,14 +22,14 @@ class TestBclManager(unittest.TestCase):
         """
             Assert the handler processes the event src_path correctly
         """
-        # Mocking shutil.copytree ensures we don't actually copy anything to disk during testing
-        bcl_manager.shutil.copytree = Mock()
-
         # Mocking logging allows to test exceptions are logged
         bcl_manager.logging = MagicMock()
 
         # Test handler
         handler = bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
+
+        # Mocking process_bcl_plate allows us to test on_create without actually doing any processing
+        handler.process_bcl_plate = Mock()
 
         # Ignores non-CopyComplete events
         self.assertEventOutput(handler, False, './notCopyComplete.txt')
@@ -40,17 +40,18 @@ class TestBclManager(unittest.TestCase):
         self.assertEventOutput(handler, True, './CopyComplete.txt')
 
         # Logs exceptions when bcl processing fails
-        mock = Mock()
-        mock.side_effect = Exception('Error processing Bcl plate')
-        handler.process_bcl_plate = mock
+        handler.process_bcl_plate.side_effect = Exception('Error processing Bcl plate')
 
         with self.assertRaises(Exception):
             event = watchdog.events.FileCreatedEvent('./CopyComplete.txt')
             handler.on_created(event)
-            
+
         self.assertTrue(bcl_manager.logging.exception.called)
 
     def test_copy(self):
+        """
+            Asserts the copy method does not overwrite
+        """
         bcl_manager.shutil.copytree = Mock() 
 
         with self.assertRaises(Exception):
