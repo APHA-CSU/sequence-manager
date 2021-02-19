@@ -1,9 +1,20 @@
 import unittest
+import unittest.mock
 
 import watchdog
 import bcl_manager
 
 class TestBclManager(unittest.TestCase):
+    def test_handler_construction(self):
+        # Output directories exist
+        handler = lambda:  bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
+
+        # Output directories do not exist 
+        with self.assertRaises(Exception):
+            bcl_manager.BclEventHandler('./DOES_NOT_EXIST', './', copy_complete_filename='CopyComplete.txt')
+
+        with self.assertRaises(Exception):
+            bcl_manager.BclEventHandler('./', './DOES_NOT_EXIST', copy_complete_filename='CopyComplete.txt')
 
     def test_bcl_event_handler(self):
         """
@@ -27,5 +38,17 @@ class TestBclManager(unittest.TestCase):
         actual_output = handler.on_created(event)        
         self.assertEqual(actual_output, expected_output)
 
+
+
 if __name__ == '__main__':
     unittest.main()
+
+
+#     ... @patch('module.ClassName1')
+# ... def test(MockClass1, MockClass2):
+# ...     module.ClassName1()
+# ...     module.ClassName2()
+# ...     assert MockClass1 is module.ClassName1
+# ...     assert MockClass2 is module.ClassName2
+# ...     assert MockClass1.called
+# ...     assert MockClass2.called

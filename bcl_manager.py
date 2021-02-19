@@ -4,6 +4,7 @@ import logging
 import ntpath
 import argparse
 import os
+import shutil
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -13,8 +14,8 @@ def convert_to_fastq(from_path, to_path):
     pass
 
 def copy(from_path, to_path):
-    """ TODO """
-    pass
+    return
+    shutil.copy(from_path, to_path)
 
 def upload():
     """ TODO """
@@ -37,6 +38,13 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Converted Fastq (one dir for each plate)
         self.fastq_dir = fastq_dir
+
+        # Make sure backup and fastq dirs exist
+        if not os.path.isdir(self.backup_dir):
+            raise Exception("Backup Directory does not exist: %s" % self.backup_dir)
+
+        if not os.path.isdir(self.fastq_dir):
+            raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
 
     def on_created(self, event):
         """Called when a file or directory is created.
