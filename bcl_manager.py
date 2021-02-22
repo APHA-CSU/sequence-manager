@@ -106,7 +106,6 @@ def main(watch_dir, backup_dir, fastq_dir):
             logging.StreamHandler()
         ]
     )
-    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     # Setup file watcher in a new thread
     observer = Observer()
