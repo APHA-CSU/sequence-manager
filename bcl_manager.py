@@ -9,6 +9,8 @@ import shutil
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
 
+from s3_logging_handler import S3LoggingHandler
+
 def convert_to_fastq(src_dir, dest_dir):
     """ TODO """
     pass
@@ -96,14 +98,16 @@ def main(watch_dir, backup_dir, fastq_dir):
         Watches a directory for CopyComplete.txt files
     """
     # Setup logging
-    # TODO: handler that logs straight to S3
+    log_path = 'bcl-manager.log'
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         handlers=[
-            logging.FileHandler('bcl-manager.log'),
-            logging.StreamHandler()
+            logging.FileHandler(log_path),
+            logging.StreamHandler(),
+            S3LoggingHandler(log_path, 's3-csu-003', 'aaron/logs/bcl-manager.log')
         ]
     )
 
