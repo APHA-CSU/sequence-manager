@@ -112,21 +112,29 @@ def main(watch_dir, backup_dir, fastq_dir):
     handler = BclEventHandler(backup_dir, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
 
-    # Start
-    logging.info('Starting BCL File Watcher: %s' % watch_dir)
+    # Start File Watcher
     observer.start()
+    logging.info(f"""
+        --------------------
+        BCL Manager Started
+        --------------------
+        
+        Bcl Watch Directory: {watch_dir}
+        Backup Directory: {handler.backup_dir}
+        Fastq Directory: {handler.fastq_dir}
+    """)    
 
     # Sleep till exit
-    input('Press return to quit')
+    input('Press return to quit\n')
     observer.stop()
     observer.join()
 
 if __name__ == "__main__":
     # Parse
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='./', help='Watch directory')
-    parser.add_argument('--backup-dir', default='./data/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='./fastq-data/', help='Where to put converted fastq data')
+    parser.add_argument('dir', nargs='?', default='./watch/', help='Watch directory')
+    parser.add_argument('--backup-dir', default='./backup/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
 
     args = parser.parse_args()
 

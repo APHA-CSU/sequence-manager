@@ -9,6 +9,7 @@ import bcl_manager
 class TestBclManager(unittest.TestCase):
     def test_handler_construction(self):
         # Succeeds when output directories exist
+        # TODO: This case should actually fail, as it can lead to recursive behaviour
         bcl_manager.BclEventHandler('./', './')
 
         # Raises exceptions when output directories do not exist 
@@ -22,7 +23,7 @@ class TestBclManager(unittest.TestCase):
         """
             Assert the handler processes the event src_path correctly
         """
-        # Mocking logging allows to test that exceptions are logged
+        # Mocking logging allows us to test that exceptions are logged
         bcl_manager.logging = MagicMock()
 
         # Test handler
