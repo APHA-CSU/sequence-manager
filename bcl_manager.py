@@ -9,19 +9,19 @@ import shutil
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
 
-def convert_to_fastq(from_path, to_path):
+def convert_to_fastq(src_dir, dest_dir):
     """ TODO """
     pass
 
-def copy(from_path, to_path):
+def copy(src_dir, dest_dir):
     """
-        Backup BclFiles over
+        Backup BclFiles to another directory
     """
     # Make sure we are not overwriting anything!
-    if os.path.isdir(os.path.abspath(to_path)):
-        raise Exception('Cannot backup Bcl, path exists: %s'%to_path)    
+    if os.path.isdir(os.path.abspath(dest_dir)):
+        raise Exception('Cannot backup Bcl, path exists: %s'%dest_dir)    
    
-    shutil.copytree(from_path, to_path)
+    shutil.copytree(src_dir, dest_dir)
 
 def upload():
     """ TODO """
@@ -79,7 +79,7 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
-            return False        
+            return        
 
         # log if anything fails
         try:
@@ -90,8 +90,6 @@ class BclEventHandler(FileSystemEventHandler):
             raise e
 
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
-        return True
-
 
 def main(watch_dir, backup_dir, fastq_dir):
     """

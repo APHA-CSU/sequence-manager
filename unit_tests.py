@@ -9,35 +9,35 @@ import bcl_manager
 class TestBclManager(unittest.TestCase):
     def test_handler_construction(self):
         # Succeeds when output directories exist
-        bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
+        bcl_manager.BclEventHandler('./', './')
 
         # Raises exceptions when output directories do not exist 
         with self.assertRaises(Exception):
-            bcl_manager.BclEventHandler('./DOES_NOT_EXIST', './', copy_complete_filename='CopyComplete.txt')
+            bcl_manager.BclEventHandler('./DOES_NOT_EXIST', './')
 
         with self.assertRaises(Exception):
-            bcl_manager.BclEventHandler('./', './DOES_NOT_EXIST', copy_complete_filename='CopyComplete.txt')
+            bcl_manager.BclEventHandler('./', './DOES_NOT_EXIST')
 
     def test_on_create(self):
         """
             Assert the handler processes the event src_path correctly
         """
-        # Mocking logging allows to test exceptions are logged
+        # Mocking logging allows to test that exceptions are logged
         bcl_manager.logging = MagicMock()
 
         # Test handler
-        handler = bcl_manager.BclEventHandler('./', './', copy_complete_filename='CopyComplete.txt')
+        handler = bcl_manager.BclEventHandler('./', './')
 
         # Mocking process_bcl_plate allows us to test on_create without actually doing any processing
         handler.process_bcl_plate = Mock()
 
         # Ignores non-CopyComplete events
-        self.assertEventOutput(handler, False, './notCopyComplete.txt')
-        self.assertEventOutput(handler, False, 'CopyComplete.txt/')
+        self.assertOnCreatedProcessing(handler, False, './notCopyComplete.txt')
+        self.assertOnCreatedProcessing(handler, False, 'CopyComplete.txt/')
         
         # Processes CopyComplete events        
-        self.assertEventOutput(handler, True, '/some/absolute/path/to/CopyComplete.txt')
-        self.assertEventOutput(handler, True, './CopyComplete.txt')
+        self.assertOnCreatedProcessing(handler, True, '/some/absolute/path/to/CopyComplete.txt')
+        self.assertOnCreatedProcessing(handler, True, './CopyComplete.txt')
 
         # Logs exceptions when bcl processing fails
         handler.process_bcl_plate.side_effect = Exception('Error processing Bcl plate')
@@ -50,9 +50,9 @@ class TestBclManager(unittest.TestCase):
 
     def test_copy(self):
         """
-            Asserts the copy method does not overwrite
+            Asserts the copy method does not overwrite directories
         """
-        # Mocking shutil.copytree prevents any actual data from being copy
+        # Mocking shutil.copytree prevents any actual data from being copied during testing
         bcl_manager.shutil.copytree = Mock() 
 
         with self.assertRaises(Exception):
@@ -60,20 +60,19 @@ class TestBclManager(unittest.TestCase):
 
         bcl_manager.copy('./', './DOES/NOT/EXIST/')
 
-    def assertEventOutput(self, handler, expected_output, src_path):
+    def assertOnCreatedProcessing(self, handler, bcl_plate_processing_expected, src_path):
         """ 
-            Asserts the actual_output of a BclEventHandler matches the expected_output
+            Asserts whether BclEventHandler.on_created() calls process_bcl_plate()
         """
-        # Create new event
+        # Mocking process_bcl_plate allows us to test if it was called
+        handler.process_bcl_plate = MagicMock()
+
+        # Run a FileCreated event
         event = watchdog.events.FileCreatedEvent(src_path)
+        handler.on_created(event)        
 
-        # Test Output
-        actual_output = handler.on_created(event)        
-        self.assertEqual(actual_output, expected_output)
-
-        # Ensure we log successes
-        if actual_output:
-            self.assertTrue(bcl_manager.logging.info.called)
+        # Assert if process_bcl_plate() was called
+        self.assertTrue(bcl_plate_processing_expected == handler.process_bcl_plate.called)
 
 if __name__ == '__main__':
     unittest.main()
