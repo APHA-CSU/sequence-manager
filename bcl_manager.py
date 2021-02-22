@@ -4,17 +4,24 @@ import logging
 import ntpath
 import argparse
 import os
+import shutil
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
 
-def convert_to_fastq(from_path, to_path):
+def convert_to_fastq(src_dir, dest_dir):
     """ TODO """
     pass
 
-def copy(from_path, to_path):
-    """ TODO """
-    pass
+def copy(src_dir, dest_dir):
+    """
+        Backup BclFiles to another directory
+    """
+    # Make sure we are not overwriting anything!
+    if os.path.isdir(os.path.abspath(dest_dir)):
+        raise Exception('Cannot backup Bcl, path exists: %s'%dest_dir)    
+   
+    shutil.copytree(src_dir, dest_dir)
 
 def upload():
     """ TODO """
@@ -33,10 +40,31 @@ class BclEventHandler(FileSystemEventHandler):
         self.copy_complete_filename = copy_complete_filename
 
         # Raw Bcl Data backed up here (one dir for each plate)
-        self.backup_dir = backup_dir
+        self.backup_dir = backup_dir + os.path.join('')
 
         # Converted Fastq (one dir for each plate)
-        self.fastq_dir = fastq_dir
+        self.fastq_dir = fastq_dir + os.path.join('')
+
+        # Make sure backup and fastq dirs exist
+        if not os.path.isdir(self.backup_dir):
+            raise Exception("Backup Directory does not exist: %s" % self.backup_dir)
+
+        if not os.path.isdir(self.fastq_dir):
+            raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
+
+    def process_bcl_plate(self, src_path):
+        """
+            Processes a bcl plate.
+            Copies, converts to fastq and uploads to AWS
+        """
+        # Get the name of the plate
+        bcl_directory = os.path.dirname(os.path.abspath(src_path))
+        plate_id = os.path.basename(bcl_directory) 
+        
+        # Process
+        copy(bcl_directory, self.backup_dir + plate_id)
+        convert_to_fastq(bcl_directory, self.fastq_dir + plate_id)
+        upload()
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -51,19 +79,17 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
-            return False        
+            return        
 
-        # TODO: log if anything fails
+        # log if anything fails
+        try:
+            self.process_bcl_plate(event.src_path)
 
-        bcl_directory = os.path.dirname(event.src_path)        
+        except Exception as e:
+            logging.exception(e)
+            raise e
 
-        copy(bcl_directory, self.backup_dir)
-        convert_to_fastq(bcl_directory, self.fastq_dir)
-        upload()
-
-        logging.info('New Illumina Plate Processed: %s' % bcl_directory)
-        return True
-
+        logging.info('New Illumina Plate Processed: %s' % event.src_path)
 
 def main(watch_dir, backup_dir, fastq_dir):
     """
@@ -80,28 +106,35 @@ def main(watch_dir, backup_dir, fastq_dir):
             logging.StreamHandler()
         ]
     )
-    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     # Setup file watcher in a new thread
     observer = Observer()
     handler = BclEventHandler(backup_dir, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
 
-    # Start
-    logging.info('Starting BCL File Watcher: %s' % watch_dir)
+    # Start File Watcher
     observer.start()
+    logging.info(f"""
+        --------------------
+        BCL Manager Started
+        --------------------
+        
+        Bcl Watch Directory: {watch_dir}
+        Backup Directory: {handler.backup_dir}
+        Fastq Directory: {handler.fastq_dir}
+    """)    
 
     # Sleep till exit
-    input('Press return to quit')
+    input('Press return to quit\n')
     observer.stop()
     observer.join()
 
 if __name__ == "__main__":
     # Parse
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='./', help='Watch directory')
-    parser.add_argument('--backup-dir', default='./data/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='./fastq-data/', help='Where to put converted fastq data')
+    parser.add_argument('dir', nargs='?', default='./watch/', help='Watch directory')
+    parser.add_argument('--backup-dir', default='./backup/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
 
     args = parser.parse_args()
 
