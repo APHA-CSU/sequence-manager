@@ -1,29 +1,31 @@
-from logging import StreamHandler, Handler
+from logging import StreamHandler, Handler, FileHandler
+from pathlib import Path
+
+
 
 import boto3  
 
-class S3LoggingHandler(Handler):
+class S3LoggingHandler(FileHandler):
 
     def __init__(self, filename, bucket, key):
         """
-            This custom logger upload a file S3 on every log
-
-            TODO: This is a bit hacky. 
-              A better implementation would stream logs directly to s3 from memory,
-              instead of uploading a file produced by another logging handler.
-              However, this is simple and works.
+            This custom logger logs events to a file and uploads to S3
         """
-        super().__init__()
+        # Initialise class like a normal FileHandler does
+        super().__init__(filename)
 
+        # S3 Target
         self.bucket = bucket
         self.key = key
-        self.filename = filename
         self.s3 = boto3.client("s3")
 
     def emit(self, record):
         """
-            Upload to s3
-            TODO: directly stream record to s3 instead of file
+            Logs file locally and then upload to s3
         """
-        self.s3.upload_file(self.filename, self.bucket, self.key)
+        # Log like a normal FileHandler does
+        super().emit(record)
+
+        # Upload to S3
+        self.s3.upload_file(self.baseFilename, self.bucket, self.key)
 

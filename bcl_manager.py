@@ -68,6 +68,8 @@ class BclEventHandler(FileSystemEventHandler):
         convert_to_fastq(bcl_directory, self.fastq_dir + plate_id)
         upload()
 
+        # TODO: Remove old plates
+
     def on_created(self, event):
         """Called when a file or directory is created.
 
@@ -98,16 +100,13 @@ def main(watch_dir, backup_dir, fastq_dir):
         Watches a directory for CopyComplete.txt files
     """
     # Setup logging
-    log_path = 'bcl-manager.log'
-
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
         handlers=[
-            logging.FileHandler(log_path),
             logging.StreamHandler(),
-            S3LoggingHandler(log_path, 's3-csu-003', 'aaron/logs/bcl-manager.log')
+            S3LoggingHandler('./bcl-manager.log', 's3-csu-003', 'aaron/logs/bcl-manager.log')
         ]
     )
 
