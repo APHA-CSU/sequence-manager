@@ -95,22 +95,13 @@ class BclEventHandler(FileSystemEventHandler):
 
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
 
-def main(watch_dir, backup_dir, fastq_dir):
+def start(watch_dir, backup_dir, fastq_dir):
     """
         Watches a directory for CopyComplete.txt files
     """
-    # Setup logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[
-            logging.StreamHandler(),
-            S3LoggingHandler('./bcl-manager.log', 's3-csu-003', 'aaron/logs/bcl-manager.log')
-        ]
-    )
-
     # Setup file watcher in a new thread
+    # TODO: Ensure backup/fastq dirs are not subdirectories of watch_dir.
+    #    This causes catastrophic recursive behaviours
     observer = Observer()
     handler = BclEventHandler(backup_dir, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
@@ -138,8 +129,21 @@ if __name__ == "__main__":
     parser.add_argument('dir', nargs='?', default='./watch/', help='Watch directory')
     parser.add_argument('--backup-dir', default='./backup/', help='Where to backup data to')
     parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
+    parser.add_argument('--s3-log-bucket', default='s3-csu-003', help='S3 Bucket to upload log file')
+    parser.add_argument('--s3-log-key', default='aaron/logs/bcl-manager.log', help='S3 Key to upload log file')
 
     args = parser.parse_args()
 
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler(),
+            S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key)
+        ]
+    )
+
     # Run
-    main(args.dir, args.backup_dir, args.fastq_dir)
+    start(args.dir, args.backup_dir, args.fastq_dir)

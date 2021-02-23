@@ -1,8 +1,6 @@
 from logging import StreamHandler, Handler, FileHandler
 from pathlib import Path
 
-
-
 import boto3  
 
 class S3LoggingHandler(FileHandler):
