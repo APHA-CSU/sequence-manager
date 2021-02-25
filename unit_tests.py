@@ -88,7 +88,7 @@ class TestBclManager(unittest.TestCase):
         # This case should pass
         bcl_manager.start('./watch_dir/', './fastq_dir/', './backup_dir/')
 
-        # These cases would cause catastrophic behaviour should they not fail
+        # These cases would cause catastrophic recursion and should throw pre-emptive exceptions
         with self.assertRaises(SubdirectoryException):
             bcl_manager.start('./', './', './')
 

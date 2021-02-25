@@ -106,7 +106,7 @@ def is_subdirectory(filepath1, filepath2):
     return path2 in path1.parents or path1 == path2
 
 class SubdirectoryException(Exception):
-    """ Use in start to signal errors that occur due to subdirectories """
+    """ Use in start to signal errors that proctect against recursive file watching behaviour """
     pass
 
 def start(watch_dir, backup_dir, fastq_dir):
@@ -122,7 +122,6 @@ def start(watch_dir, backup_dir, fastq_dir):
         raise SubdirectoryException('Fastq directory cannot be a subdirectory of the watch directory')
 
     # Setup file watcher in a new thread
-    # TODO: 
     observer = Observer()
     handler = BclEventHandler(backup_dir, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
