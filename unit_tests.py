@@ -5,11 +5,11 @@ import random
 
 import watchdog
 import bcl_manager
+from bcl_manager import SubdirectoryException
 
 class TestBclManager(unittest.TestCase):
     def test_handler_construction(self):
         # Succeeds when output directories exist
-        # TODO: This case should actually fail, as it can lead to recursive behaviour
         bcl_manager.BclEventHandler('./', './')
 
         # Raises exceptions when output directories do not exist 
@@ -74,6 +74,32 @@ class TestBclManager(unittest.TestCase):
 
         # Assert if process_bcl_plate() was called
         self.assertTrue(bcl_plate_processing_expected == handler.process_bcl_plate.called)
+
+    def test_start(self):
+        """
+            Test the start
+        """
+        # Mocking allows us to stop logging and s3 uploads during testing
+        bcl_manager.logging = Mock()
+        bcl_manager.Observer = Mock()
+        bcl_manager.input = Mock()
+        bcl_manager.BclEventHandler = Mock()
+
+        # This case should pass
+        bcl_manager.start('./watch_dir/', './fastq_dir/', './backup_dir/')
+
+        # These cases would cause catastrophic recursion and should throw pre-emptive exceptions
+        with self.assertRaises(SubdirectoryException):
+            bcl_manager.start('./', './', './')
+
+        with self.assertRaises(SubdirectoryException):
+            bcl_manager.start('./', './another/subdirectory/', './')
+
+        with self.assertRaises(SubdirectoryException):
+            bcl_manager.start('./', '/absolute/path/', './another/subdirectory/that/doesnt/exist/')
+
+        with self.assertRaises(SubdirectoryException):
+            bcl_manager.start('./', '/absolute/path/', './subdirectory/doesnt/exist/')
 
 if __name__ == '__main__':
     unittest.main()

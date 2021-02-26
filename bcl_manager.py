@@ -5,6 +5,7 @@ import ntpath
 import argparse
 import os
 import shutil
+from pathlib import Path
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -95,13 +96,32 @@ class BclEventHandler(FileSystemEventHandler):
 
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
 
+def is_subdirectory(filepath1, filepath2):
+    """
+        Checks if path1 is a subdirectory of path2
+    """
+    path1 = Path(os.path.abspath(filepath1))
+    path2 = Path(os.path.abspath(filepath2))
+
+    return path2 in path1.parents or path1 == path2
+
+class SubdirectoryException(Exception):
+    """ Use in start to signal errors that proctect against recursive file watching behaviour """
+    pass
+
 def start(watch_dir, backup_dir, fastq_dir):
     """
         Watches a directory for CopyComplete.txt files
     """
-    # Setup file watcher in a new thread
-    # TODO: Ensure backup/fastq dirs are not subdirectories of watch_dir.
+    #  Ensure backup/fastq dirs are not subdirectories of watch_dir.
     #    This causes catastrophic recursive behaviours
+    if is_subdirectory(backup_dir, watch_dir):
+        raise SubdirectoryException('Backup directory cannot be a subdirectory of the watch directory')
+
+    if is_subdirectory(fastq_dir, watch_dir):
+        raise SubdirectoryException('Fastq directory cannot be a subdirectory of the watch directory')
+
+    # Setup file watcher in a new thread
     observer = Observer()
     handler = BclEventHandler(backup_dir, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
