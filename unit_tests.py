@@ -26,6 +26,11 @@ class TestBclManager(unittest.TestCase):
         # Mocking logging allows us to test that exceptions are logged
         bcl_manager.logging = MagicMock()
 
+        # Mocking disk_usage to return 0 free space every time it's called 
+        #    (it'd throw an exception on non-existent paths otherwise)
+        bcl_manager.shutil.disk_usage = Mock()
+        bcl_manager.shutil.disk_usage.return_value = (0,0,0)
+
         # Test handler
         handler = bcl_manager.BclEventHandler('./', './')
 

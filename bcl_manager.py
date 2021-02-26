@@ -37,7 +37,7 @@ def log_disk_usage(filepath):
     total, used, free = shutil.disk_usage(filepath)
     free_gb = free / 1024**3
 
-    logging.info(f"Free space: (%.1fGb) %s"%(free_gb, filepath))
+    logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
 
 class BclEventHandler(FileSystemEventHandler):
     """
@@ -64,6 +64,10 @@ class BclEventHandler(FileSystemEventHandler):
         if not os.path.isdir(self.fastq_dir):
             raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
 
+        # Log disk usage
+        log_disk_usage(self.fastq_dir)
+        log_disk_usage(self.backup_dir)
+
     def process_bcl_plate(self, src_path):
         """
             Processes a bcl plate.
@@ -72,18 +76,13 @@ class BclEventHandler(FileSystemEventHandler):
         # Get the name of the plate
         bcl_directory = os.path.dirname(os.path.abspath(src_path))
         plate_id = os.path.basename(bcl_directory)
-
-        # Log remaining disk space
-        log_disk_usage(bcl_directory)
-        log_disk_usage(self.fastq_dir)
-        log_disk_usage(self.backup_dir)
         
         # Process
         copy(bcl_directory, self.backup_dir + plate_id)
         convert_to_fastq(bcl_directory, self.fastq_dir + plate_id)
         upload()
 
-        # TODO: Remove old plates
+        # TODO: Remove old plates     
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -102,13 +101,18 @@ class BclEventHandler(FileSystemEventHandler):
 
         # log if anything fails
         try:
+            logging.info('Processing new plate: %s' % event.src_path)
             self.process_bcl_plate(event.src_path)
 
         except Exception as e:
             logging.exception(e)
             raise e
 
+        # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
+        log_disk_usage(event.src_path)
+        log_disk_usage(self.fastq_dir)
+        log_disk_usage(self.backup_dir)  
 
 def is_subdirectory(filepath1, filepath2):
     """
