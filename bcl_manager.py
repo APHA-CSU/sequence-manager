@@ -30,6 +30,15 @@ def upload():
     """ TODO """
     pass
 
+def log_disk_usage(filepath):
+    """
+        Logs the level of free space in gb for the fileystem the filepath is mounted on
+    """
+    total, used, free = shutil.disk_usage(filepath)
+    free_gb = free / 1024**3
+
+    logging.info(f"Free space: (%.1fGb) %s"%(free_gb, filepath))
+
 class BclEventHandler(FileSystemEventHandler):
     """
         Handles CopyComplete.txt created events 
@@ -62,7 +71,12 @@ class BclEventHandler(FileSystemEventHandler):
         """
         # Get the name of the plate
         bcl_directory = os.path.dirname(os.path.abspath(src_path))
-        plate_id = os.path.basename(bcl_directory) 
+        plate_id = os.path.basename(bcl_directory)
+
+        # Log remaining disk space
+        log_disk_usage(bcl_directory)
+        log_disk_usage(self.fastq_dir)
+        log_disk_usage(self.backup_dir)
         
         # Process
         copy(bcl_directory, self.backup_dir + plate_id)
