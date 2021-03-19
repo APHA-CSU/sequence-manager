@@ -14,17 +14,20 @@ from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEve
 from s3_logging_handler import S3LoggingHandler
 
 def convert_to_fastq(src_dir, dest_dir):
+    """
+        Converts an Illumina Bcl Run to Fastq using bcl-convert
+    """
     return_code = subprocess.run([
-        "bcl-convert"
+        "bcl-convert",
         "--output-directory", dest_dir,
         "--bcl-input-directory", src_dir,
-        "--sample-sheet", f"{src_dir}/SampleSheet.csv"
+        "--sample-sheet", f"{src_dir}/SampleSheet.csv",
         "--bcl-sampleproject-subdirectories", "true",
         "--no-lane-splitting", "true"
     ]).returncode
 
     if return_code:
-        raise Exception('bcl Convert failed: %s'%(return_code))   
+        raise Exception('bcl-convert failed: %s'%(return_code))   
 
 def copy(src_dir, dest_dir):
     """
