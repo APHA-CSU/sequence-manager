@@ -106,5 +106,18 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(SubdirectoryException):
             bcl_manager.start('./', '/absolute/path/', './subdirectory/doesnt/exist/')
 
+    def test_convert_to_fastq(self):
+        # Mock subprocess
+        bcl_manager.subprocess.run = Mock()
+
+        # Successful conversion
+        bcl_manager.subprocess.run.return_value = Mock(returncode=0)
+        bcl_manager.convert_to_fastq('./', './')
+
+        # Unsuccessful conversion
+        bcl_manager.subprocess.run.return_value = Mock(returncode=1)
+        with self.assertRaises(Exception):
+            bcl_manager.convert_to_fastq('./', './')
+
 if __name__ == '__main__':
     unittest.main()
