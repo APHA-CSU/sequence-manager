@@ -49,7 +49,7 @@ def upload(src_path, bucket, base_key='aaron/fastq/'):
     base_key = os.path.join(base_key, '')
 
     # Extract run number
-    match = re.search(r'.+_.+_(.+)_.+', os.path.dirname(src_path))
+    match = re.search(r'.+_.+_(.+)_.+', basename(os.path.dirname(src_path)))
 
     if not match:
         raise Exception(f'Could not extract run number from {src_path}')
@@ -121,12 +121,16 @@ class BclEventHandler(FileSystemEventHandler):
             Copies, converts to fastq and uploads to AWS
         """
         # Get run number of the plate
-        dirname = os.path.dirname(os.path.abspath(src_path)) + '/'
+        abs_src_path = os.path.dirname(os.path.abspath(src_path)) + '/'
+        src_name = basename(abs_src_path[:-1])
+
+        backup_path = self.backup_dir + src_name + '/'
+        fastq_path = self.fastq_dir + src_name + '/'
 
         # Process
-        copy(src_path, self.backup_dir + dirname)
-        convert_to_fastq(src_path, self.fastq_dir + dirname)
-        upload(self.fastq_dir + dirname, self.fastq_bucket, self.fastq_key)
+        copy(abs_src_path, backup_path)
+        convert_to_fastq(abs_src_path, fastq_path)
+        upload(fastq_path, self.fastq_bucket, self.fastq_key)
 
         # TODO: Remove old plates     
 
@@ -187,7 +191,7 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key):
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_dir)
+    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_key)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
