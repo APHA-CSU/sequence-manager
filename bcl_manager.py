@@ -13,6 +13,8 @@ from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEve
 
 from s3_logging_handler import S3LoggingHandler
 
+import utils
+
 def convert_to_fastq(src_dir, dest_dir):
     """
         Converts an Illumina Bcl Run to Fastq using bcl-convert
@@ -39,9 +41,20 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload():
-    """ TODO """
-    pass
+def upload(src_dir, bucket, key):
+    target_uri = f's3://{bucket}/{key}'
+
+    # Make sure the key exists 
+    if utils.s3_object_exists(bucket, key):
+        raise Exception(f'{target_uri} already exists')
+
+    # Sync
+    return_code = subprocess.run([
+        "aws", 's3', 'sync', src_dir, target_uri
+    ]).returncode
+
+    if return_code:
+        raise Exception('aws s3 sync failed: %s'%(return_code))  
 
 def log_disk_usage(filepath):
     """

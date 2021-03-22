@@ -24,3 +24,6 @@ def s3_object_exists(bucket, key):
             raise e
 
     return key_exists
+
+if __name__ == '__main__':
+    print('key exists: ', s3_object_exists('s3-csu-003', 'aaron/'))
