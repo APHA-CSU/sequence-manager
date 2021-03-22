@@ -44,7 +44,7 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket='s3-csu-003', base_key='aaron/fastq/'):
+def upload(src_path, bucket, base_key='aaron/fastq/'):
     # Add trailing slash
     base_key = os.path.join(base_key, '')
 
@@ -87,7 +87,7 @@ class BclEventHandler(FileSystemEventHandler):
         Handles CopyComplete.txt created events 
     """
 
-    def __init__(self, backup_dir, fastq_dir, copy_complete_filename='CopyComplete.txt'):
+    def __init__(self, backup_dir, fastq_dir, fastq_bucket, fastq_key, copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
         # Creation of this file indicates that an Illumina Machine has finished transferring
@@ -99,6 +99,10 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Converted Fastq (one dir for each plate)
         self.fastq_dir = fastq_dir + os.path.join('')
+
+        # Where fastq files should be stored on S3
+        self.fastq_bucket = fastq_bucket
+        self.fastq_key = fastq_key
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -122,7 +126,7 @@ class BclEventHandler(FileSystemEventHandler):
         # Process
         copy(src_path, self.backup_dir + dirname)
         convert_to_fastq(src_path, self.fastq_dir + dirname)
-        upload(self.fastq_dir + dirname)
+        upload(self.fastq_dir + dirname, self.fastq_bucket, self.fastq_key)
 
         # TODO: Remove old plates     
 
@@ -169,7 +173,7 @@ class SubdirectoryException(Exception):
     """ Use in start to signal errors that proctect against recursive file watching behaviour """
     pass
 
-def start(watch_dir, backup_dir, fastq_dir):
+def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -183,7 +187,7 @@ def start(watch_dir, backup_dir, fastq_dir):
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(backup_dir, fastq_dir)
+    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_dir)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
@@ -211,6 +215,8 @@ if __name__ == "__main__":
     parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
     parser.add_argument('--s3-log-bucket', default='s3-csu-003', help='S3 Bucket to upload log file')
     parser.add_argument('--s3-log-key', default='aaron/logs/bcl-manager.log', help='S3 Key to upload log file')
+    parser.add_argument('--s3-fastq-bucket', default='s3-csu-003', help='S3 Bucket to upload fastq files')
+    parser.add_argument('--s3-fastq-key', default='aaron/fastq/', help='S3 Key to upload fastq data')
 
     args = parser.parse_args()
 
@@ -226,4 +232,10 @@ if __name__ == "__main__":
     )
 
     # Run
-    start(args.dir, args.backup_dir, args.fastq_dir)
+    start(
+        args.dir, 
+        args.backup_dir, 
+        args.fastq_dir,
+        args.s3_fastq_bucket,
+        args.s3_fastq_key,
+    )
