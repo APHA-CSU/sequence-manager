@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 import subprocess
 import re
+import glob
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -43,9 +44,12 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path):
+def upload(src_path, bucket='s3-csu-003', base_key='aaron/fastq/'):
+    # Add trailing slash
+    base_key = os.path.join(base_key, '')
+
     # Extract run number
-    match = re.search(r'.+_.+_(.+)_.+', basename(src_path))
+    match = re.search(r'.+_.+_(.+)_.+', os.path.dirname(src_path))
 
     if not match:
         raise Exception(f'Could not extract run number from {src_path}')
@@ -53,8 +57,21 @@ def upload(src_path):
     run_number = match.group(1)
 
     # Upload each directory that contains fastq files
-    
+    for dirname in glob.glob(src_path + '*/'):
+        # Skip if no fastq.gz in the directory
+        if not glob.glob(dirname + '*.fastq.gz'):
+            continue        
 
+        # S3 target
+        budget_code = basename(os.path.dirname(dirname))
+        key = f'{base_key}{budget_code}/{run_number}'
+
+        # Upload
+        logging.info(f'Uploading {dirname} to s3://{bucket}/{key}')
+        
+        utils.s3_sync(dirname, bucket, key)
+        
+        logging.info(f'Finished uploading {dirname}')
 
 def log_disk_usage(filepath):
     """
@@ -100,7 +117,7 @@ class BclEventHandler(FileSystemEventHandler):
             Copies, converts to fastq and uploads to AWS
         """
         # Get run number of the plate
-        dirname = os.path.dirname(os.path.abspath(src_path))
+        dirname = os.path.dirname(os.path.abspath(src_path)) + '/'
 
         # Process
         copy(src_path, self.backup_dir + dirname)
