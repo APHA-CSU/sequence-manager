@@ -4,9 +4,11 @@ import logging
 import ntpath
 import argparse
 import os
+from os.path import basename
 import shutil
 from pathlib import Path
 import subprocess
+import re
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -41,20 +43,18 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_dir, bucket, key):
-    target_uri = f's3://{bucket}/{key}'
+def upload(src_path):
+    # Extract run number
+    match = re.search(r'.+_.+_(.+)_.+', basename(src_path))
 
-    # Make sure the key exists 
-    if utils.s3_object_exists(bucket, key):
-        raise Exception(f'{target_uri} already exists')
+    if not match:
+        raise Exception(f'Could not extract run number from {src_path}')
 
-    # Sync
-    return_code = subprocess.run([
-        "aws", 's3', 'sync', src_dir, target_uri
-    ]).returncode
+    run_number = match.group(1)
 
-    if return_code:
-        raise Exception('aws s3 sync failed: %s'%(return_code))  
+    # Upload each directory that contains fastq files
+    
+
 
 def log_disk_usage(filepath):
     """
@@ -99,14 +99,13 @@ class BclEventHandler(FileSystemEventHandler):
             Processes a bcl plate.
             Copies, converts to fastq and uploads to AWS
         """
-        # Get the name of the plate
-        bcl_directory = os.path.dirname(os.path.abspath(src_path))
-        plate_id = os.path.basename(bcl_directory)
-        
+        # Get run number of the plate
+        dirname = os.path.dirname(os.path.abspath(src_path))
+
         # Process
-        copy(bcl_directory, self.backup_dir + plate_id)
-        convert_to_fastq(bcl_directory, self.fastq_dir + plate_id)
-        upload()
+        copy(src_path, self.backup_dir + dirname)
+        convert_to_fastq(src_path, self.fastq_dir + dirname)
+        upload(self.fastq_dir + dirname)
 
         # TODO: Remove old plates     
 

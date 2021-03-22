@@ -1,5 +1,6 @@
 import boto3
 import botocore
+import subprocess
 
 s3 = boto3.resource('s3')
 
@@ -24,6 +25,21 @@ def s3_object_exists(bucket, key):
             raise e
 
     return key_exists
+
+def s3_sync(src_dir, bucket, key):
+    target_uri = f's3://{bucket}/{key}'
+
+    # Make sure the key exists 
+    if s3_object_exists(bucket, key):
+        raise Exception(f'{target_uri} already exists')
+
+    # Sync
+    return_code = subprocess.run([
+        "aws", 's3', 'sync', src_dir, target_uri
+    ]).returncode
+
+    if return_code:
+        raise Exception('aws s3 sync failed: %s'%(return_code))
 
 if __name__ == '__main__':
     print('key exists: ', s3_object_exists('s3-csu-003', 'aaron/'))
