@@ -44,7 +44,7 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket, base_key='aaron/fastq/'):
+def upload(src_path, bucket, base_key):
     # Add trailing slash
     base_key = os.path.join(base_key, '')
 
