@@ -119,5 +119,22 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.convert_to_fastq('./', './')
 
+    def test_upload(self):
+        # Test cases
+        good_src_path = 'yymmdd_instrumentID_runnumber_flowcellID'
+        bad_src_path = 'incorrectly-formatted'
+
+        # Mocks
+        s3_sync_mock = Mock()
+        bcl_manager.utils.s3_sync = s3_sync_mock
+        bcl_manager.subprocess.run = Mock()
+
+        # Successful upload
+        bcl_manager.upload(good_src_path, '', '')
+
+        # Raises error if src_path is incorrectly formatted
+        with self.assertRaises(Exception):
+            bcl_manager.upload(bad_src_path, '', '')
+
 if __name__ == '__main__':
     unittest.main()

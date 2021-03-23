@@ -47,6 +47,7 @@ def copy(src_dir, dest_dir):
 def upload(src_path, bucket, base_key):
     # Add trailing slash
     base_key = os.path.join(base_key, '')
+    src_path = os.path.join(src_path, '')
 
     # Extract run number
     match = re.search(r'.+_.+_(.+)_.+', basename(os.path.dirname(src_path)))
