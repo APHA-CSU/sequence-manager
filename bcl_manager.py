@@ -45,6 +45,11 @@ def copy(src_dir, dest_dir):
     shutil.copytree(src_dir, dest_dir)
 
 def upload(src_path, bucket, base_key):
+    """
+        Uploads all subdirectories that contain fastq.gz files to S3 with structure s3://{bucket}/{key}/{project_code}/{run_number}
+        
+        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID 
+    """
     # Add trailing slash
     base_key = os.path.join(base_key, '')
     src_path = os.path.join(src_path, '')
