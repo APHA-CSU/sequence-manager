@@ -63,8 +63,8 @@ def upload(src_path, bucket, base_key):
             continue        
 
         # S3 target
-        budget_code = basename(os.path.dirname(dirname))
-        key = f'{base_key}{budget_code}/{run_number}'
+        project_code = basename(os.path.dirname(dirname))
+        key = f'{base_key}{project_code}/{run_number}'
 
         # Upload
         logging.info(f'Uploading {dirname} to s3://{bucket}/{key}')
