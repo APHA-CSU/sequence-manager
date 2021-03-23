@@ -225,8 +225,8 @@ if __name__ == "__main__":
     parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
     parser.add_argument('--s3-log-bucket', default='s3-csu-003', help='S3 Bucket to upload log file')
     parser.add_argument('--s3-log-key', default='aaron/logs/bcl-manager.log', help='S3 Key to upload log file')
-    parser.add_argument('--s3-fastq-bucket', default='s3-csu-003', help='S3 Bucket to upload fastq files')
-    parser.add_argument('--s3-fastq-key', default='aaron/fastq/', help='S3 Key to upload fastq data')
+    parser.add_argument('--s3-fastq-bucket', default='s3-csu-001', help='S3 Bucket to upload fastq files')
+    parser.add_argument('--s3-fastq-key', default='', help='S3 Key to upload fastq data')
 
     args = parser.parse_args()
 
