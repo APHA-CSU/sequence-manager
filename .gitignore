@@ -1,3 +1,6 @@
 CopyComplete.txt
 bcl-manager.log
 __pycache__/
+backup/
+fastq/
+watch/
