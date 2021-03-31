@@ -72,12 +72,9 @@ def upload(src_path, bucket, base_key):
         project_code = basename(os.path.dirname(dirname))
         key = f'{base_key}{project_code}/{run_number}'
 
-        # Upload
-        logging.info(f'Uploading {dirname} to s3://{bucket}/{key}')
-        
+        # Upload      
         utils.s3_sync(dirname, bucket, key)
         
-        logging.info(f'Finished uploading {dirname}')
 
 def log_disk_usage(filepath):
     """
@@ -134,8 +131,13 @@ class BclEventHandler(FileSystemEventHandler):
         fastq_path = self.fastq_dir + src_name + '/'
 
         # Process
+        logging.info(f'Backing up Raw Bcl Run: {backup_path}')
         copy(abs_src_path, backup_path)
+
+        logging.info(f'Converting to fastq: {fastq_path}')
         convert_to_fastq(abs_src_path, fastq_path)
+        
+        logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key)
 
         # TODO: Remove old plates     
