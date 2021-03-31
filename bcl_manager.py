@@ -237,7 +237,7 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S',
         handlers=[
             logging.StreamHandler(),
-            S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key)
+            # S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key)
         ]
     )
 
