@@ -72,12 +72,9 @@ def upload(src_path, bucket, base_key):
         project_code = basename(os.path.dirname(dirname))
         key = f'{base_key}{project_code}/{run_number}'
 
-        # Upload
-        logging.info(f'Uploading {dirname} to s3://{bucket}/{key}')
-        
+        # Upload      
         utils.s3_sync(dirname, bucket, key)
         
-        logging.info(f'Finished uploading {dirname}')
 
 def log_disk_usage(filepath):
     """
@@ -134,8 +131,13 @@ class BclEventHandler(FileSystemEventHandler):
         fastq_path = self.fastq_dir + src_name + '/'
 
         # Process
+        logging.info(f'Backing up Raw Bcl Run: {backup_path}')
         copy(abs_src_path, backup_path)
+
+        logging.info(f'Converting to fastq: {fastq_path}')
         convert_to_fastq(abs_src_path, fastq_path)
+        
+        logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key)
 
         # TODO: Remove old plates     
@@ -220,9 +222,9 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key):
 if __name__ == "__main__":
     # Parse
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='./watch/', help='Watch directory')
-    parser.add_argument('--backup-dir', default='./backup/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='./fastq/', help='Where to put converted fastq data')
+    parser.add_argument('dir', nargs='?', default='/Illumina/IncomingRuns/', help='Watch directory')
+    parser.add_argument('--backup-dir', default='/Illumina/OutputFastq/BclRuns/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='/Illumina/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
     parser.add_argument('--s3-log-bucket', default='s3-csu-003', help='S3 Bucket to upload log file')
     parser.add_argument('--s3-log-key', default='aaron/logs/bcl-manager.log', help='S3 Key to upload log file')
     parser.add_argument('--s3-fastq-bucket', default='s3-csu-001', help='S3 Bucket to upload fastq files')
