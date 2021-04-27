@@ -5,7 +5,7 @@ import boto3
 
 class S3LoggingHandler(FileHandler):
 
-    def __init__(self, filename, bucket, key):
+    def __init__(self, filename, bucket, key, endpoint_url):
         """
             This custom logger logs events to a file and uploads to S3
         """
@@ -15,7 +15,7 @@ class S3LoggingHandler(FileHandler):
         # S3 Target
         self.bucket = bucket
         self.key = key
-        self.s3 = boto3.client("s3")
+        self.s3 = boto3.client("s3", endpoint_url=endpoint_url)
 
     def emit(self, record):
         """

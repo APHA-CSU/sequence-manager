@@ -44,7 +44,7 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket, base_key):
+def upload(src_path, bucket, base_key, s3_endpoint_url):
     """
         Uploads all subdirectories that contain fastq.gz files to S3 with structure s3://{bucket}/{key}/{project_code}/{run_number}
         
@@ -73,7 +73,7 @@ def upload(src_path, bucket, base_key):
         key = f'{base_key}{project_code}/{run_number}'
 
         # Upload      
-        utils.s3_sync(dirname, bucket, key)
+        utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
         
 
 def log_disk_usage(filepath):
@@ -90,7 +90,14 @@ class BclEventHandler(FileSystemEventHandler):
         Handles CopyComplete.txt created events 
     """
 
-    def __init__(self, backup_dir, fastq_dir, fastq_bucket, fastq_key, copy_complete_filename='CopyComplete.txt'):
+    def __init__(self, 
+        backup_dir, 
+        fastq_dir, 
+        fastq_bucket, 
+        fastq_key, 
+        s3_endpoint_url,
+        copy_complete_filename='CopyComplete.txt'
+        ):
         super(BclEventHandler, self).__init__()
 
         # Creation of this file indicates that an Illumina Machine has finished transferring
@@ -106,6 +113,7 @@ class BclEventHandler(FileSystemEventHandler):
         # Where fastq files should be stored on S3
         self.fastq_bucket = fastq_bucket
         self.fastq_key = fastq_key
+        self.s3_endpoint_url = s3_endpoint_url
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -138,7 +146,7 @@ class BclEventHandler(FileSystemEventHandler):
         convert_to_fastq(abs_src_path, fastq_path)
         
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
-        upload(fastq_path, self.fastq_bucket, self.fastq_key)
+        upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
         # TODO: Remove old plates     
 
@@ -185,7 +193,7 @@ class SubdirectoryException(Exception):
     """ Use in start to signal errors that proctect against recursive file watching behaviour """
     pass
 
-def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key):
+def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -199,7 +207,7 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key):
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_key)
+    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
@@ -225,10 +233,11 @@ if __name__ == "__main__":
     parser.add_argument('dir', nargs='?', default='/Illumina/IncomingRuns/', help='Watch directory')
     parser.add_argument('--backup-dir', default='/Illumina/OutputFastq/BclRuns/', help='Where to backup data to')
     parser.add_argument('--fastq-dir', default='/Illumina/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
-    parser.add_argument('--s3-log-bucket', default='s3-csu-003', help='S3 Bucket to upload log file')
+    parser.add_argument('--s3-log-bucket', default='s3-csu-001', help='S3 Bucket to upload log file')
     parser.add_argument('--s3-log-key', default='aaron/logs/bcl-manager.log', help='S3 Key to upload log file')
     parser.add_argument('--s3-fastq-bucket', default='s3-csu-001', help='S3 Bucket to upload fastq files')
     parser.add_argument('--s3-fastq-key', default='', help='S3 Key to upload fastq data')
+    parser.add_argument('--s3-endpoint-url', default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com', help='aws s3 endpoint url')
 
     args = parser.parse_args()
 
@@ -239,7 +248,7 @@ if __name__ == "__main__":
         datefmt='%Y-%m-%d %H:%M:%S',
         handlers=[
             logging.StreamHandler(),
-            S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key)
+            S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key, args.s3_endpoint_url)
         ]
     )
 
@@ -250,4 +259,5 @@ if __name__ == "__main__":
         args.fastq_dir,
         args.s3_fastq_bucket,
         args.s3_fastq_key,
+        args.s3_endpoint_url
     )
