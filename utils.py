@@ -33,7 +33,7 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
     target_uri = f's3://{bucket}/{key}'
 
     # Don't overwrite 
-    if s3_object_exists(bucket, key, endpoint_url):
+    if s3_object_exists(bucket, key, s3_endpoint_url):
         raise Exception(f'{target_uri} already exists')
 
     # Sync
