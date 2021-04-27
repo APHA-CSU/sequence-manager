@@ -2,7 +2,7 @@ import boto3
 import botocore
 import subprocess
 
-s3 = boto3.resource('s3')
+
 
 def s3_object_exists(bucket, key, endpoint_url):
     """
@@ -12,8 +12,10 @@ def s3_object_exists(bucket, key, endpoint_url):
     
     key_exists = True
 
+    s3 = boto3.resource('s3', endpoint_url=endpoint_url)
+
     try:
-        s3.Object(bucket, key, endpoint_url=endpoint_url).load()
+        s3.Object(bucket, key).load()
 
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == "404":
