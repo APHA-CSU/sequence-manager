@@ -223,8 +223,6 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
     """)    
 
     # Sleep till exit
-    input('Press return to quit\n')
-    observer.stop()
     observer.join()
 
 if __name__ == "__main__":
