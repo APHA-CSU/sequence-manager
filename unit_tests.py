@@ -10,7 +10,7 @@ from bcl_manager import SubdirectoryException
 class TestBclManager(unittest.TestCase):
     def test_handler_construction(self):
         # Succeeds when output directories exist
-        bcl_manager.BclEventHandler('./', './', '', '')
+        bcl_manager.BclEventHandler('./', './', '', '', '')
 
         # Raises exceptions when output directories do not exist 
         with self.assertRaises(Exception):
@@ -32,7 +32,7 @@ class TestBclManager(unittest.TestCase):
         bcl_manager.shutil.disk_usage.return_value = (0,0,0)
 
         # Test handler
-        handler = bcl_manager.BclEventHandler('./', './', '', '')
+        handler = bcl_manager.BclEventHandler('./', './', '', '', '')
 
         # Mocking process_bcl_plate allows us to test on_create without actually doing any processing
         handler.process_bcl_plate = Mock()
@@ -91,20 +91,20 @@ class TestBclManager(unittest.TestCase):
         bcl_manager.BclEventHandler = Mock()
 
         # This case should pass
-        bcl_manager.start('./watch_dir/', './fastq_dir/', './backup_dir/', '', '')
+        bcl_manager.start('./watch_dir/', './fastq_dir/', './backup_dir/', '', '', '')
 
         # These cases would cause catastrophic recursion and should throw pre-emptive exceptions
         with self.assertRaises(SubdirectoryException):
-            bcl_manager.start('./', './', './', '', '')
+            bcl_manager.start('./', './', './', '', '', '')
 
         with self.assertRaises(SubdirectoryException):
-            bcl_manager.start('./', './another/subdirectory/', './', '', '')
+            bcl_manager.start('./', './another/subdirectory/', './', '', '', '')
 
         with self.assertRaises(SubdirectoryException):
-            bcl_manager.start('./', '/absolute/path/', './another/subdirectory/that/doesnt/exist/', '', '')
+            bcl_manager.start('./', '/absolute/path/', './another/subdirectory/that/doesnt/exist/', '', '', '')
 
         with self.assertRaises(SubdirectoryException):
-            bcl_manager.start('./', '/absolute/path/', './subdirectory/doesnt/exist/', '', '')
+            bcl_manager.start('./', '/absolute/path/', './subdirectory/doesnt/exist/', '', '', '')
 
     def test_convert_to_fastq(self):
         # Mock subprocess
@@ -130,7 +130,7 @@ class TestBclManager(unittest.TestCase):
         bcl_manager.subprocess.run = Mock()
 
         # Successful upload
-        bcl_manager.upload(good_src_path, '', '')
+        bcl_manager.upload(good_src_path, '', '', '')
 
         # Raises error if src_path is incorrectly formatted
         with self.assertRaises(Exception):
