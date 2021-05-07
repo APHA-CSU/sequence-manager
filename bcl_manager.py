@@ -55,12 +55,12 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
     src_path = os.path.join(src_path, '')
 
     # Extract run number
-    match = re.search(r'.+_.+_(.+)_.+', basename(os.path.dirname(src_path)))
+    match = re.search(r'.+_(.+_.+)_.+', basename(os.path.dirname(src_path)))
 
     if not match:
         raise Exception(f'Could not extract run number from {src_path}')
 
-    run_number = match.group(1)
+    run_id = match.group(1)
 
     # Upload each directory that contains fastq files
     for dirname in glob.glob(src_path + '*/'):
@@ -70,7 +70,7 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
 
         # S3 target
         project_code = basename(os.path.dirname(dirname))
-        key = f'{base_key}{project_code}/{run_number}'
+        key = f'{base_key}{project_code}/{run_id}'
 
         # Upload      
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
