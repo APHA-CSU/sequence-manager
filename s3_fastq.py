@@ -45,6 +45,8 @@ def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
 
     objects = bucket.objects.filter(Prefix=prefix)
 
+    return [obj.key for obj in objects]
+
     for obj in objects:
         summaries = []
         for obj in objects:
@@ -59,12 +61,13 @@ def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
 
     return pd.DataFrame(summaries)
 
-def pair_files():
-    df = pd.read_csv('./files.csv')
+def pair_files(keys):
+    # df = pd.read_csv('./files.csv')
+    # keys = sorted(list(df["key"]))
 
-    pattern = r'(\w+)\/(?:(.+)_)?(\w+)\/(.+)_(\w+)_R(\d)_(\d+)\.fastq\.gz'
+    keys = sorted(keys)
 
-    keys = sorted(list(df["key"]))
+    pattern = r'(\w+)\/(?:(.+)_)?(\w+)\/(.+)_(\w+)_R(\d)_(\d+)\.fastq\.gz'   
 
     if len(keys) % 2:
         raise Exception("Cannot pair files, uneven number of files")
@@ -103,28 +106,45 @@ def pair_files():
             "sequencer": match_1[1],
             "run_id": match_1[2],
             "name": match_1[3],
-            "S": match_1[4],
+            "well": match_1[4],
             "read_1": key_1,
             "read_2": key_2,
-            "last": match_1[6]
+            "lane": match_1[6]
         }
         samples.append(sample)
 
 
     return pd.DataFrame(samples)
 
-
-
-def list_subfolders():
-    bucket='s3-csu-001'
-    prefix='SB4030'
+def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):    
     client = boto3.client('s3')
     result = client.list_objects(Bucket=bucket, Prefix=prefix+'/', Delimiter='/')
 
     return [o.get('Prefix') for o in result.get('CommonPrefixes')]
 
+def list_tb_samples(bucket='s3-csu-001', 
+    prefixes=['SB4030', 'SB4030-TB', 'SB4020', 'SB4020-TB']
+):
+    keys = []
+    for prefix in prefixes:
+        subfolders = list_subfolders(bucket, prefix)
 
-df = pair_files()
-a = 1
+        for subfolder in subfolders:
+            objs = list_keys(bucket, subfolder)
+            objs = list(filter(lambda x: x.endswith('.fastq.gz'), objs))
+
+            keys.extend(objs)
+
+    samples = pair_files(keys)
+
+    
+
+    a = 1
+
+
+df = list_tb_samples()
+
+
+a = df
 # list_subfolder()
 # pair_files()
