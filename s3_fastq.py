@@ -67,7 +67,10 @@ def pair_files(keys):
 
     keys = sorted(keys)
 
-    pattern = r'(\w+)\/(?:(.+)_)?(\w+)\/(.+)_(\w+)_R(\d)_(\d+)\.fastq\.gz'   
+    pattern = r'(\w+)\/(?:(.+)_)?(\w+)\/(.+)_(\w+)_R(\d)_(\d+)\.fastq\.gz'  
+    pattern = r'(.+)\/(?:(.+)_)?(\w+)\/(.+)_S(\d+)(?:_.+)?_R(\d)_(\d+)\.fastq\.gz' 
+    pattern = r'(.+)\/(?:(.+)_)?(\w+)\/(.+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
+    pattern = r'(.+)\/(?:(.+)_)?(\w+)\/([^_]+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
 
     if len(keys) % 2:
         raise Exception("Cannot pair files, uneven number of files")
