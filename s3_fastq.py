@@ -73,32 +73,52 @@ def pair_files(keys):
         raise Exception("Cannot pair files, uneven number of files")
 
     samples = []
+    unpaired = []
+    not_parsed = []
 
-    for i in range(0, len(keys), 2):
-        key_1 = keys[i]
-        key_2 = keys[i+1]
+    i = 0
+
+    while len(keys)>=2:
+        key_1 = keys.pop(0)
+        key_2 = keys.pop(0)
 
         match_1 = re.findall(pattern, key_1)
         match_2 = re.findall(pattern, key_2)
 
         # Ensure a match was made
         if not match_1 or len(match_1)!=1:
-            raise Exception("Cannot parse: ", match_1)
+            not_parsed.append(key_1)
+            keys.insert(0, key_2)
+            continue
 
         if not match_2 or len(match_2)!=1:
-            raise Exception("Cannot parse: ", match_2)
+            not_parsed.append(key_2)
+            keys.insert(0, key_1)
+            continue
 
         # Extract match
         match_1 = match_1[0]
         match_2 = match_2[0]
 
         # Check all fields match except the read pair
+        is_match = True
         for i, x in enumerate(match_1):
             if i == 5:
+                if match_1[i] != '1' or match_2[i] != '2':
+                    is_match = False
+                    break
                 continue
 
-            if match_1[i]!=match_2[i]:
-                raise Exception(f"Reads do not pair: {key_1} \n {key_2}")
+            if match_1[i] != match_2[i]:
+                is_match = False
+                break
+                # raise Exception(f"Reads do not pair: {key_1} \n {key_2}")
+
+        # The two keys do not form a correct match
+        if not is_match:
+            unpaired.append(key_1)
+            keys.insert(0, key_2)
+            continue        
 
         # Create Object
         sample = {
@@ -113,8 +133,9 @@ def pair_files(keys):
         }
         samples.append(sample)
 
+    unpaired.extend(keys)
 
-    return pd.DataFrame(samples)
+    return pd.DataFrame(samples), pd.DataFrame(unpaired, columns=['unpaired']), pd.DataFrame(not_parsed, columns=['not_parsed'])
 
 def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):    
     client = boto3.client('s3')
@@ -125,19 +146,23 @@ def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):
 def list_tb_samples(bucket='s3-csu-001', 
     prefixes=['SB4030', 'SB4030-TB', 'SB4020', 'SB4020-TB']
 ):
-    keys = []
-    for prefix in prefixes:
-        subfolders = list_subfolders(bucket, prefix)
+    # keys = []
+    # for prefix in prefixes:
+    #     subfolders = list_subfolders(bucket, prefix)
 
-        for subfolder in subfolders:
-            objs = list_keys(bucket, subfolder)
-            objs = list(filter(lambda x: x.endswith('.fastq.gz'), objs))
+    #     for subfolder in subfolders:
+    #         objs = list_keys(bucket, subfolder)
+    #         objs = list(filter(lambda x: x.endswith('.fastq.gz'), objs))
 
-            keys.extend(objs)
+    #         keys.extend(objs)
 
-    samples = pair_files(keys)
+    keys = pd.read_csv('./keys.csv')["keys"].to_list()
 
-    
+    samples, unpaired, not_parsed = pair_files(keys)
+
+    samples.to_csv('./samples.csv')
+    unpaired.to_csv('./unpaired.csv')
+    not_parsed.to_csv('./not_parsed.csv')
 
     a = 1
 
