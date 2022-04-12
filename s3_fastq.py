@@ -73,12 +73,17 @@ def pair_files(keys):
     unpaired = []
     not_parsed = []
 
-    i = 0
-
     # Loop over each key and try to pair with the next file
+    j = 0
     while len(keys)>=2:
+        j+=1
         key_1 = keys.pop(0)
         key_2 = keys.pop(0)
+
+        break_me = 'SB4020-TB/00522/A20U004247_S999_R1_001.fastq.gz'
+        if (break_me in key_1) or (break_me in key_2):
+            a = 1
+            pass
 
         match_1 = re.findall(pattern, key_1)
         match_2 = re.findall(pattern, key_2)
@@ -134,7 +139,17 @@ def pair_files(keys):
 
     unpaired.extend(keys)
 
-    return pd.DataFrame(samples), pd.DataFrame(unpaired, columns=['unpaired']), pd.DataFrame(not_parsed, columns=['not_parsed'])
+    samples = pd.DataFrame(samples)
+    unpaired = pd.DataFrame(unpaired, columns=['unpaired'])
+    not_parsed = pd.DataFrame(not_parsed, columns=['not_parsed'])
+
+    plates = plate_summary(samples)
+
+    return (samples,
+        plates,
+        unpaired,
+        not_parsed        
+    )
 
 def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):    
     client = boto3.client('s3')
@@ -153,28 +168,48 @@ def plate_summary(samples):
     
     return summary
 
-def list_tb_samples(bucket='s3-csu-001', 
-    prefixes=['SB4030', 'SB4030-TB', 'SB4020', 'SB4020-TB']
-):
-    # keys = []
-    # for bucket, prefix in prefixes:
-    #     keys.extend(list_keys(bucket, prefix))
+def list_tb_samples():
+    # S3-CSU-001
+    bucket='s3-csu-001'
+    prefixes=['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/']
+    
+    keys = []
+    for prefix in prefixes:
+        keys.extend(list_keys(bucket, prefix))
 
-    # df = keys.to_list()
+    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
 
-    # quit()
+    samples, plates, unpaired, not_parsed = pair_files(keys)
 
-    keys = pd.read_csv('./keys.csv')["0"].to_list()
+    samples.to_csv(f'./{bucket}_samples.csv')
+    plates.to_csv(f'./{bucket}_plates.csv')
+    unpaired.to_csv(f'./{bucket}_unpaired.csv')
+    not_parsed.to_csv(f'./{bucket}_not_parsed.csv')
 
-    samples, unpaired, not_parsed = pair_files(keys)
+    # S3-CSU-002
+    bucket='s3-csu-002'
+    prefixes=['SB4020-TB/']
+    
+    keys = []
+    for prefix in prefixes:
+        keys.extend(list_keys(bucket, prefix))
 
-    plates = plate_summary(samples)
+    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
 
-    # samples.to_csv('./samples.csv')
-    # unpaired.to_csv('./unpaired.csv')
-    # not_parsed.to_csv('./not_parsed.csv')
+    samples, plates, unpaired, not_parsed = pair_files(keys)
+
+    samples.to_csv(f'./{bucket}_samples.csv')
+    plates.to_csv(f'./{bucket}_plates.csv')
+    unpaired.to_csv(f'./{bucket}_unpaired.csv')
+    not_parsed.to_csv(f'./{bucket}_not_parsed.csv')
 
     a = 1
+
+
+# keys = pd.read_csv('s3-csu-001_keys.csv')["0"].to_list()
+# a = pair_files(keys)
+# b = 1
+
 
 df = list_tb_samples()
 print(df)
