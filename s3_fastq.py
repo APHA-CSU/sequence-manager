@@ -1,6 +1,7 @@
 import boto3
 import pandas as pd
 import subprocess
+import os
 
 import re
 
@@ -112,6 +113,8 @@ def plate_summary(samples):
     plate_sizes = df.size().to_frame().rename(columns={0: "num_samples"})
 
     summary = summary.merge(plate_sizes, left_on="id", right_on="id")
+
+    summary["prefix"] = df.apply(lambda x: os.path.dirname(x["read_1"].max()) + '/')
     
     return summary
 
