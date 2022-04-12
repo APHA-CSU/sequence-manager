@@ -1,9 +1,8 @@
+import os
+import re
+
 import boto3
 import pandas as pd
-import subprocess
-import os
-
-import re
 
 def list_keys(bucket_name, prefix):
     """ Returns a list of all keys matching a prefix in a S3 bucket """
@@ -132,12 +131,15 @@ def plate_summary(samples):
 
 def bucket_summary(bucket, prefixes):
     """ summarises the samples in a bucket from a list of prefixes """
+    # Get list of keys from s3
     keys = []
     for prefix in prefixes:
         keys.extend(list_keys(bucket, prefix))
 
+    # Parse
     samples, plates, unpaired, not_parsed = pair_files(keys)
 
+    # Include bucket name
     samples["bucket"] = bucket
     plates["bucket"] = bucket
     unpaired["bucket"] = bucket
@@ -145,7 +147,7 @@ def bucket_summary(bucket, prefixes):
 
     return samples, plates, unpaired, not_parsed
 
-def list_tb_samples():
+def main():
     """ summarises the TB samples. Produces a number of csvs locally """
     # Summarise
     samples_1, plates_1, unpaired_1, not_parsed_1 = bucket_summary('s3-csu-001', ['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/'])
@@ -158,4 +160,4 @@ def list_tb_samples():
     pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
 
 if __name__ == '__main__':
-    df = list_tb_samples()
+    main()
