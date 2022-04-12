@@ -5,19 +5,17 @@ import os
 
 import re
 
-
 def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
+    """  """
     s3 = boto3.resource('s3')
-
     bucket = s3.Bucket(bucket_name)
 
     objects = bucket.objects.filter(Prefix=prefix)
-
     return [obj.key for obj in objects]
 
 def pair_files(keys):
     """
-        Pair fastq read files
+        Pair fastq read files from a list of keys
     """
 
     keys = sorted(keys)
@@ -118,7 +116,36 @@ def plate_summary(samples):
     
     return summary
 
+def bucket_summary(bucket, prefixes):
+    keys = []
+    for prefix in prefixes:
+        keys.extend(list_keys(bucket, prefix))
+
+    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
+
+    samples, plates, unpaired, not_parsed = pair_files(keys)
+
+    samples["bucket"] = bucket
+    plates["bucket"] = bucket
+    unpaired["bucket"] = bucket
+    not_parsed["bucket"] = bucket
+
+    return samples, plates, unpaired, not_parsed
+
 def list_tb_samples():
+    # Summarise
+    samples_1, plates_1, unpaired_1, not_parsed_1 = bucket_summary('s3-csu-001', ['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/'])
+    samples_2, plates_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
+
+    # Combine + csv output
+    pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv')
+    pd.concat([plates_1, plates_2], ignore_index=True).to_csv('plates.csv')
+    pd.concat([unpaired_1, unpaired_2], ignore_index=True).to_csv('unpaired.csv')
+    pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
+
+    return
+
+
     # S3-CSU-001
     bucket='s3-csu-001'
     prefixes=['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/']
@@ -155,12 +182,9 @@ def list_tb_samples():
 
     a = 1
 
-
-keys = pd.read_csv('s3-csu-001_keys.csv')["0"].to_list()
-a,b,c,d = pair_files(keys)
+# keys = pd.read_csv('s3-csu-001_keys.csv')["0"].to_list()
+# a,b,c,d = pair_files(keys)
 # b = 1
-
-
 df = list_tb_samples()
 print(df)
 # a = df
