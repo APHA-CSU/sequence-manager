@@ -5,8 +5,8 @@ import os
 
 import re
 
-def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
-    """  """
+def list_keys(bucket_name, prefix):
+    """ Returns a list of all keys matching a prefix in a S3 bucket """
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
 
@@ -14,33 +14,29 @@ def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
     return [obj.key for obj in objects]
 
 def pair_files(keys):
-    """
-        Pair fastq read files from a list of keys
-    """
-
-    keys = sorted(keys)
+    """ Pair fastq read files from a list of keys. """
+    # This pattern has been tested on regexr with a selection of test cases
+    # TODO: unit test
     pattern = r'(.+)\/(?:(.+)_)?(\w+)\/([^_]+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
+
+    # Sorting the keys puts paired files next (or close) to each other
+    keys = sorted(keys)
 
     samples = []
     unpaired = []
     not_parsed = []
 
-    # Loop over each key and try to pair with the next file
-    j = 0
+    # Loop over keys, detect named pairs, extract metadata
     while len(keys)>=2:
-        j+=1
+        # Select keys
         key_1 = keys.pop(0)
         key_2 = keys.pop(0)
 
-        break_me = 'SB4020-TB/00522/A20U004247_S999_R1_001.fastq.gz'
-        if (break_me in key_1) or (break_me in key_2):
-            a = 1
-            pass
-
+        # Check is the keys match
         match_1 = re.findall(pattern, key_1)
         match_2 = re.findall(pattern, key_2)
-
-        # Ensure a match was made
+        
+        # Non-matching naming convention
         if not match_1 or len(match_1)!=1:
             not_parsed.append(key_1)
             keys.insert(0, key_2)
@@ -67,7 +63,6 @@ def pair_files(keys):
             if match_1[i] != match_2[i]:
                 is_match = False
                 break
-                # raise Exception(f"Reads do not pair: {key_1} \n {key_2}")
 
         # The two keys do not form a correct match
         if not is_match:
@@ -75,7 +70,7 @@ def pair_files(keys):
             keys.insert(0, key_2)
             continue        
 
-        # Create Object
+        # Create Sample Object
         sample = {
             "project_code": match_1[0],
             "sequencer": match_1[1],
@@ -86,11 +81,13 @@ def pair_files(keys):
             "read_2": key_2,
             "lane": match_1[6]
         }
-        sample["id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
+        sample["plate_id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
         samples.append(sample)
 
+    # Last key remaining
     unpaired.extend(keys)
 
+    # All keys should exist once across these output dataframes
     samples = pd.DataFrame(samples)
     unpaired = pd.DataFrame(unpaired, columns=['unpaired'])
     not_parsed = pd.DataFrame(not_parsed, columns=['not_parsed'])
@@ -104,15 +101,21 @@ def pair_files(keys):
     )
 
 def plate_summary(samples):
-    df = samples.groupby("id")
+    # Group by plate_id
+    df = samples.groupby("plate_id")
 
+    # Plate metadata from an arbitrary sample.
+    # TODO: Ensure these columns are consistent across each group
     summary = df.max().loc[:, ['sequencer', 'run_id', 'project_code']]
 
+    # Additional plate columns: num_samples / plate_id / uri prefix
     plate_sizes = df.size().to_frame().rename(columns={0: "num_samples"})
-
-    summary = summary.merge(plate_sizes, left_on="id", right_on="id")
+    summary = summary.merge(plate_sizes, left_on="plate_id", right_on="plate_id")
 
     summary["prefix"] = df.apply(lambda x: os.path.dirname(x["read_1"].max()) + '/')
+
+    # more convenient to have the plate_id as a column rather than the index
+    summary = summary.reset_index(level=0)
     
     return summary
 
@@ -120,8 +123,6 @@ def bucket_summary(bucket, prefixes):
     keys = []
     for prefix in prefixes:
         keys.extend(list_keys(bucket, prefix))
-
-    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
 
     samples, plates, unpaired, not_parsed = pair_files(keys)
 
@@ -143,48 +144,5 @@ def list_tb_samples():
     pd.concat([unpaired_1, unpaired_2], ignore_index=True).to_csv('unpaired.csv')
     pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
 
-    return
-
-
-    # S3-CSU-001
-    bucket='s3-csu-001'
-    prefixes=['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/']
-    
-    keys = []
-    for prefix in prefixes:
-        keys.extend(list_keys(bucket, prefix))
-
-    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
-
-    samples, plates, unpaired, not_parsed = pair_files(keys)
-
-    samples.to_csv(f'./{bucket}_samples.csv')
-    plates.to_csv(f'./{bucket}_plates.csv')
-    unpaired.to_csv(f'./{bucket}_unpaired.csv')
-    not_parsed.to_csv(f'./{bucket}_not_parsed.csv')
-
-    # S3-CSU-002
-    bucket='s3-csu-002'
-    prefixes=['SB4020-TB/']
-    
-    keys = []
-    for prefix in prefixes:
-        keys.extend(list_keys(bucket, prefix))
-
-    pd.DataFrame(data=keys).to_csv(f'{bucket}_keys.csv')
-
-    samples, plates, unpaired, not_parsed = pair_files(keys)
-
-    samples.to_csv(f'./{bucket}_samples.csv')
-    plates.to_csv(f'./{bucket}_plates.csv')
-    unpaired.to_csv(f'./{bucket}_unpaired.csv')
-    not_parsed.to_csv(f'./{bucket}_not_parsed.csv')
-
-    a = 1
-
-# keys = pd.read_csv('s3-csu-001_keys.csv')["0"].to_list()
-# a,b,c,d = pair_files(keys)
-# b = 1
-df = list_tb_samples()
-print(df)
-# a = df
+if __name__ == '__main__':
+    df = list_tb_samples()
