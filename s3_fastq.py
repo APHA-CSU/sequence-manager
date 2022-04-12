@@ -62,18 +62,12 @@ def list_keys(bucket_name='s3-csu-001', prefix='SB4030/M02410_5267/'):
     return pd.DataFrame(summaries)
 
 def pair_files(keys):
-    # df = pd.read_csv('./files.csv')
-    # keys = sorted(list(df["key"]))
+    """
+        Pair fastq read files
+    """
 
     keys = sorted(keys)
-
-    pattern = r'(\w+)\/(?:(.+)_)?(\w+)\/(.+)_(\w+)_R(\d)_(\d+)\.fastq\.gz'  
-    pattern = r'(.+)\/(?:(.+)_)?(\w+)\/(.+)_S(\d+)(?:_.+)?_R(\d)_(\d+)\.fastq\.gz' 
-    pattern = r'(.+)\/(?:(.+)_)?(\w+)\/(.+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
     pattern = r'(.+)\/(?:(.+)_)?(\w+)\/([^_]+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
-
-    if len(keys) % 2:
-        raise Exception("Cannot pair files, uneven number of files")
 
     samples = []
     unpaired = []
@@ -81,6 +75,7 @@ def pair_files(keys):
 
     i = 0
 
+    # Loop over each key and try to pair with the next file
     while len(keys)>=2:
         key_1 = keys.pop(0)
         key_2 = keys.pop(0)
@@ -134,6 +129,7 @@ def pair_files(keys):
             "read_2": key_2,
             "lane": match_1[6]
         }
+        sample["id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
         samples.append(sample)
 
     unpaired.extend(keys)
@@ -149,30 +145,24 @@ def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):
 def list_tb_samples(bucket='s3-csu-001', 
     prefixes=['SB4030', 'SB4030-TB', 'SB4020', 'SB4020-TB']
 ):
-    # keys = []
-    # for prefix in prefixes:
-    #     subfolders = list_subfolders(bucket, prefix)
+    keys = []
+    for bucket, prefix in prefixes:
+        keys.extend(list_keys(bucket, prefix))
 
-    #     for subfolder in subfolders:
-    #         objs = list_keys(bucket, subfolder)
-    #         objs = list(filter(lambda x: x.endswith('.fastq.gz'), objs))
+    df = keys.to_list()
 
-    #         keys.extend(objs)
+    # quit()
 
-    keys = pd.read_csv('./keys.csv')["keys"].to_list()
+    keys = pd.read_csv('./keys.csv')["0"].to_list()
 
     samples, unpaired, not_parsed = pair_files(keys)
 
-    samples.to_csv('./samples.csv')
-    unpaired.to_csv('./unpaired.csv')
-    not_parsed.to_csv('./not_parsed.csv')
+    # samples.to_csv('./samples.csv')
+    # unpaired.to_csv('./unpaired.csv')
+    # not_parsed.to_csv('./not_parsed.csv')
 
     a = 1
 
-
 df = list_tb_samples()
-
-
-a = df
-# list_subfolder()
-# pair_files()
+print(df)
+# a = df
