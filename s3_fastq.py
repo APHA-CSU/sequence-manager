@@ -82,7 +82,7 @@ def pair_files(keys):
         # Create Sample Object
         sample = {
             "project_code": match_1[0],
-            "sequencer": match_1[1],
+            "sequencer": match_1[1] if match_1[1] else "UnknownSequencer",
             "run_id": match_1[2],
             "name": match_1[3],
             "well": match_1[4],
@@ -90,6 +90,7 @@ def pair_files(keys):
             "read_2": key_2,
             "lane": match_1[6]
         }
+
         sample["plate_id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
         samples.append(sample)
 
