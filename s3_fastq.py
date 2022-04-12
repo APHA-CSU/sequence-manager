@@ -142,20 +142,33 @@ def list_subfolders(bucket='s3-csu-001', prefix='SB4030'):
 
     return [o.get('Prefix') for o in result.get('CommonPrefixes')]
 
+def plate_summary(samples):
+    df = samples.groupby("id")
+
+    summary = df.max().loc[:, ['sequencer', 'run_id', 'project_code']]
+
+    plate_sizes = df.size().to_frame().rename(columns={0: "num_samples"})
+
+    summary = summary.merge(plate_sizes, left_on="id", right_on="id")
+    
+    return summary
+
 def list_tb_samples(bucket='s3-csu-001', 
     prefixes=['SB4030', 'SB4030-TB', 'SB4020', 'SB4020-TB']
 ):
-    keys = []
-    for bucket, prefix in prefixes:
-        keys.extend(list_keys(bucket, prefix))
+    # keys = []
+    # for bucket, prefix in prefixes:
+    #     keys.extend(list_keys(bucket, prefix))
 
-    df = keys.to_list()
+    # df = keys.to_list()
 
     # quit()
 
     keys = pd.read_csv('./keys.csv')["0"].to_list()
 
     samples, unpaired, not_parsed = pair_files(keys)
+
+    plates = plate_summary(samples)
 
     # samples.to_csv('./samples.csv')
     # unpaired.to_csv('./unpaired.csv')
