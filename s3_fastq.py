@@ -14,7 +14,17 @@ def list_keys(bucket_name, prefix):
     return [obj.key for obj in objects]
 
 def pair_files(keys):
-    """ Pair fastq read files from a list of keys. """
+    """ Pair fastq read files and extract metadata from a list of keys. 
+        Follows the CSU naming convention <prject_code>/
+    
+        Returns four dataframes: 
+            samples - paired samples from the keys
+            plates - summary of groupings of samples
+            unpaired - keys that didn't form a sample pair
+            not_parsed - keys that were unparsable
+
+        Each key appears in one of the samples/unpaired/not_parsed dataframes exactly once.
+    """
     # This pattern has been tested on regexr with a selection of test cases
     # TODO: unit test
     pattern = r'(.+)\/(?:(.+)_)?(\w+)\/([^_]+)(?:_S(\d+))?(?:.+)?_R(\d)_(\d+)\.fastq\.gz'
@@ -101,6 +111,7 @@ def pair_files(keys):
     )
 
 def plate_summary(samples):
+    """ Returns a dataframe that summarises the plates that feature in a samples dataframe as produced by pair_keys """
     # Group by plate_id
     df = samples.groupby("plate_id")
 
@@ -120,6 +131,7 @@ def plate_summary(samples):
     return summary
 
 def bucket_summary(bucket, prefixes):
+    """ summarises the samples in a bucket from a list of prefixes """
     keys = []
     for prefix in prefixes:
         keys.extend(list_keys(bucket, prefix))
@@ -134,6 +146,7 @@ def bucket_summary(bucket, prefixes):
     return samples, plates, unpaired, not_parsed
 
 def list_tb_samples():
+    """ summarises the TB samples. Produces a number of csvs locally """
     # Summarise
     samples_1, plates_1, unpaired_1, not_parsed_1 = bucket_summary('s3-csu-001', ['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/'])
     samples_2, plates_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
