@@ -41,11 +41,11 @@ def pair_files(keys):
         key_1 = keys.pop(0)
         key_2 = keys.pop(0)
 
-        # Check is the keys match
+        # Check if the keys match
         match_1 = re.findall(pattern, key_1)
         match_2 = re.findall(pattern, key_2)
         
-        # Non-matching naming convention
+        # Non-matching naming convention / multiple matches
         if not match_1 or len(match_1)!=1:
             not_parsed.append(key_1)
             keys.insert(0, key_2)
