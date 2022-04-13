@@ -50,22 +50,19 @@ def run_pipeline_s3(reads_uri='s3://s3-csu-001/SB4020-TB/10195/', results_uri='s
 def run_pipeline(reads, results, image=DEFAULT_IMAGE):
     """ Run the pipeline using docker """
 
+    # docker requires absolute paths
     reads = os.path.abspath(reads)
     results = os.path.abspath(results)
 
+    # pull and run
     subprocess.run(["sudo", "docker", "pull", image], check=True)
-
-    args = [
+    subprocess.run([
         "sudo", "docker", "run", "--rm", "-it",
         "-v", f"{reads}:/reads/",
         "-v", f"{results}:/results/",
         image,
         "bash", "./btb-seq", "/reads/", "/results/",
-    ]
-
-    print("CMD", " ".join(args))
-
-    subprocess.run(args, check=True)
+    ], check=True)
 
 def main(args):
     # Parse
