@@ -6,15 +6,22 @@ import os
 
 import pandas as pd
 
-# TODO: set to prod
+# TODO: set image to prod
 DEFAULT_IMAGE = "aaronsfishman/bov-tb:master"
-DEFAULT_ENDPOINT = "s3://s3-staging-area/AaronFishman/"
 
-def launch(job_id, endpoint=DEFAULT_ENDPOINT):
+# TODO: update uris
+DEFAULT_ENDPOINT = "s3://s3-staging-area/AaronFishman/"
+DEFAULT_PLATES_URI = "s3://s3-staging-area/AaronFishman/plates.csv"
+
+def launch(job_id, endpoint=DEFAULT_ENDPOINT, plates_uri=DEFAULT_PLATES_URI):
+    """ Launches a job for a specific EC2 instance """
+
     # Select plates
+    subprocess.run(["aws", "s3", "cp", plates_uri, "./plates.csv"])
     plates = pd.read_csv('./plates.csv')
     plates = plates.loc[plates.job_id==job_id, :]
 
+    # Process one plate at a time
     for i, plate in plates.iterrows():
         reads_uri = f's3://{plate["bucket"]}/{plate["prefix"]}'
         results_uri = f'{endpoint}/{plate["prefix"]}/'
@@ -22,7 +29,9 @@ def launch(job_id, endpoint=DEFAULT_ENDPOINT):
         run_pipeline_s3(reads_uri, results_uri)        
 
 
-def run_pipeline_s3(reads_uri='s3://s3-csu-001/SB4020-TB/10195/', results_uri='s3://s3-staging-area/AaronFishman/docker-1/', image=DEFAULT_IMAGE):
+def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
+    """ Run pipeline from S3 uris """
+    
     # Validate input
     if not reads_uri.startswith("s3://"):
         raise Exception(f"Invalid reads uri: {reads_uri}")
