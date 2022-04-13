@@ -9,6 +9,8 @@ import pandas as pd
 
 from s3_logging_handler import S3LoggingHandler
 
+# Launch and manage jobs for the TB reprocess
+
 # TODO: set image to prod
 DEFAULT_IMAGE = "aaronsfishman/bov-tb:master"
 
