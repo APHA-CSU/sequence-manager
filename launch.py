@@ -114,5 +114,4 @@ def main(args):
     launch(parsed.job)
 
 if __name__ == '__main__':
-    # main(sys.argv[1:])
-    main(["test"])
+    main(sys.argv[1:])
