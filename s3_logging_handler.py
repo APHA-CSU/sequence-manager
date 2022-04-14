@@ -19,9 +19,10 @@ class S3LoggingHandler(FileHandler):
         # Endpoint Url is required to transfer from Weybridge to the SCE
         # However it is not required for transfers within the SCE
         if endpoint_url is None:
-            self.s3 = boto3.client("s3", endpoint_url=endpoint_url)
-        else:
             self.s3 = boto3.client("s3")
+        else:
+            self.s3 = boto3.client("s3", endpoint_url=endpoint_url)
+            
 
     def emit(self, record):
         """
