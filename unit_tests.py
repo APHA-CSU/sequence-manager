@@ -129,6 +129,8 @@ class TestBclManager(unittest.TestCase):
         bcl_manager.utils.s3_sync = s3_sync_mock
         bcl_manager.subprocess.run = Mock()
 
+        bcl_manager.glob.glob = Mock(return_value=["directory_name"])
+
         # Successful upload
         bcl_manager.upload(good_src_path, '', '', '')
 

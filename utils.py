@@ -48,7 +48,7 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
     if return_code:
         raise Exception('aws s3 sync failed: %s'%(return_code))
 
-def upload_json(bucket, key, dictionary, endpoint_url, indent=4):
+def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
     """
         Upload json data to s3
 
@@ -60,9 +60,10 @@ def upload_json(bucket, key, dictionary, endpoint_url, indent=4):
     """
     s3 = boto3.resource('s3', endpoint_url=endpoint_url)
     obj = s3.Object(bucket, key)
-    
+
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
 
 
 if __name__ == '__main__':
-    upload_json("s3-staging-area", "AaronFishman/temp.json", {"Yo": "Dawg"})
+    endpoint = 'https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com'
+    upload_json("s3-staging-area", "AaronFishman/temp2.json", endpoint, {"cat": "meow"})
