@@ -62,8 +62,3 @@ def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
-
-
-if __name__ == '__main__':
-    endpoint = 'https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com'
-    upload_json("s3-staging-area", "AaronFishman/temp2.json", endpoint, {"cat": "meow"})
