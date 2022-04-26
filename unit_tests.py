@@ -128,6 +128,7 @@ class TestBclManager(unittest.TestCase):
         s3_sync_mock = Mock()
         bcl_manager.utils.s3_sync = s3_sync_mock
         bcl_manager.subprocess.run = Mock()
+        bcl_manager.utils.boto3 = Mock()
 
         bcl_manager.glob.glob = Mock(return_value=["directory_name"])
 

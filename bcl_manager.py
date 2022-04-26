@@ -80,6 +80,7 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
             "project_code": project_code,
             "instrument_id": instrument_id,
             "run_number": run_number,
+            "run_id": run_id,
             "upload_time": str(datetime.now())
         })
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
