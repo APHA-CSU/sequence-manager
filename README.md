@@ -61,11 +61,13 @@ The fastq data is then uploaded to S3 according to `s3://{bucket}/{prefix}/{proj
 A `meta.json` file is also uploaded to each project code prefix in S3. This file makes it easier to search/access metadata associated with each batch of samples, form databases, and write automation routines. The json file has format:
 ```
 {
-    "project_code": "string",
-    "instrument_id": "string",
-    "run_number": "string",
-    "run_id": "string",
-    "upload_time": "string"
+    "project_code": string,
+    "instrument_id": string,
+    "run_number": string,
+    "run_id": string",
+    "flowcell_id": string,
+    "sequence_date": string,
+    "upload_time": string
 }
 ```
 
