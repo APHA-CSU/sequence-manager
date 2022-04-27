@@ -137,7 +137,7 @@ class TestBclManager(unittest.TestCase):
 
         # Raises error if src_path is incorrectly formatted
         with self.assertRaises(Exception):
-            bcl_manager.upload(bad_src_path, '', '')
+            bcl_manager.upload(bad_src_path, '', '', '')
 
 if __name__ == '__main__':
     unittest.main()

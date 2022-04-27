@@ -54,7 +54,7 @@ def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
 
         bucket: S3 Bucket Name
         key: S3 key the json file is stored under
-        dictionary: A python containing data to be serialised into json for upload
+        dictionary: json serialisable python dictionary for S3 upload 
         endpoint_url: S3 endpoint url
         indent: Number of indentation spaces in the json
     """
