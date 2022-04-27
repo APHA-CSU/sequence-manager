@@ -19,6 +19,16 @@ from s3_logging_handler import S3LoggingHandler
 
 import utils
 
+"""
+bcl_manager.py is a file-watcher that runs on wey-001 for automated:
+
+- Backup of raw .bcl data locally
+- Conversion of raw .bcl data into .fastq
+- Upload of .fastq files to S3 according to project code
+
+"""
+
+
 def convert_to_fastq(src_dir, dest_dir):
     """
         Converts an Illumina Bcl Run to Fastq using bcl-convert
@@ -47,10 +57,25 @@ def copy(src_dir, dest_dir):
 
 def upload(src_path, bucket, prefix, s3_endpoint_url):
     """
-        Uploads all subdirectories that contain fastq.gz files to S3 with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/
-        
-        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID 
+        Upload every subdirectory under src_dir that contains fastq.gz files to S3.
+        Files are stored with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+
+        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
+
+        The project_code is the name of the subdirectory that contains the fastq files.
+
+        A meta.json file is also uploaded to each project_code with schema:
+        {
+            "project_code": string,
+            "instrument_id": string,
+            "run_number": string,
+            "run_id": string",
+            "flowcell_id": string,
+            "sequence_date": string,
+            "upload_time": string
+        }       
     """
+
     # Add trailing slash
     prefix = os.path.join(prefix, '')
     src_path = os.path.join(src_path, '')
