@@ -121,7 +121,7 @@ class TestBclManager(unittest.TestCase):
 
     def test_upload(self):
         # Test cases
-        good_src_path = 'yymmdd_instrumentID_runnumber_flowcellID'
+        good_src_path = '220401_instrumentID_runnumber_flowcellID'
         bad_src_path = 'incorrectly-formatted'
 
         # Mocks

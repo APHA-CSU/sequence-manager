@@ -45,25 +45,27 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket, base_key, s3_endpoint_url):
+def upload(src_path, bucket, prefix, s3_endpoint_url):
     """
-        Uploads all subdirectories that contain fastq.gz files to S3 with structure s3://{bucket}/{key}/{project_code}/{run_number}
+        Uploads all subdirectories that contain fastq.gz files to S3 with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/
         
         The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID 
     """
     # Add trailing slash
-    base_key = os.path.join(base_key, '')
+    prefix = os.path.join(prefix, '')
     src_path = os.path.join(src_path, '')
 
     # Extract metadata
-    match = re.search(r'.+_((.+)_(.+))_.+', basename(os.path.dirname(src_path)))
+    match = re.search(r'(.+)_((.+)_(.+))_(.+)', basename(os.path.dirname(src_path)))
 
     if not match:
         raise Exception(f'Could not extract run number from {src_path}')
 
-    run_id = match.group(1)
-    instrument_id = match.group(2)
-    run_number = match.group(3)
+    sequence_date = datetime.strptime(match.group(1), r'%y%m%d')
+    run_id = match.group(2)
+    instrument_id = match.group(3)
+    run_number = match.group(4)
+    flowcell_id = match.group(5)
 
     # Upload each directory that contains fastq files
     for dirname in glob.glob(src_path + '*/'):
@@ -73,7 +75,7 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
 
         # S3 target
         project_code = basename(os.path.dirname(dirname))
-        key = f'{base_key}{project_code}/{run_id}'
+        key = f'{prefix}{project_code}/{run_id}'
 
         # Upload
         utils.upload_json(bucket, f"{key}/meta.json", s3_endpoint_url, {
@@ -81,6 +83,8 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
             "instrument_id": instrument_id,
             "run_number": run_number,
             "run_id": run_id,
+            "flowcell_id": flowcell_id, 
+            "sequence_date": str(sequence_date.date()),
             "upload_time": str(datetime.now())
         })
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
