@@ -24,7 +24,7 @@ The device has two physical storage volumes:
 
 ### Data Management
 
-WARNING: There is no automated mechanism to delete data from the machine. Storage levels nned to be monitored and managed by the server administrator (Richard Ellis at the time of writing). Failure to manage storage levels can result in loss of data and disruptions to service. 
+WARNING: There is no automated mechanism to delete data from the machine. Storage levels need to be monitored and managed by the server administrator (Richard Ellis at the time of writing). Failure to manage storage levels can result in loss of data and disruptions to service. 
 
 The key paths in `wey-001`:
 - `/Illumina/IncomingRuns/` - Incoming data from the Illumina machines to the SSD
