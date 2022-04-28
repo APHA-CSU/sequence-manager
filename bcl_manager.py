@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 import re
 import glob
+from datetime import datetime
 
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
@@ -17,6 +18,16 @@ from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEve
 from s3_logging_handler import S3LoggingHandler
 
 import utils
+
+"""
+bcl_manager.py is a file-watcher that runs on wey-001 for automated:
+
+- Backup of raw .bcl data locally
+- Conversion of raw .bcl data into .fastq
+- Upload of .fastq files to S3 according to project code
+
+"""
+
 
 def convert_to_fastq(src_dir, dest_dir):
     """
@@ -44,23 +55,42 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket, base_key, s3_endpoint_url):
+def upload(src_path, bucket, prefix, s3_endpoint_url):
     """
-        Uploads all subdirectories that contain fastq.gz files to S3 with structure s3://{bucket}/{key}/{project_code}/{run_number}
-        
-        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID 
+        Upload every subdirectory under src_dir that contains fastq.gz files to S3.
+        Files are stored with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+
+        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
+
+        The project_code is the name of the subdirectory that contains the fastq files.
+
+        A meta.json file is also uploaded to each project_code with schema:
+        {
+            "project_code": string,
+            "instrument_id": string,
+            "run_number": string,
+            "run_id": string",
+            "flowcell_id": string,
+            "sequence_date": string,
+            "upload_time": string
+        }       
     """
+
     # Add trailing slash
-    base_key = os.path.join(base_key, '')
+    prefix = os.path.join(prefix, '')
     src_path = os.path.join(src_path, '')
 
-    # Extract run number
-    match = re.search(r'.+_(.+_.+)_.+', basename(os.path.dirname(src_path)))
+    # Extract metadata
+    match = re.search(r'(.+)_((.+)_(.+))_(.+)', basename(os.path.dirname(src_path)))
 
     if not match:
         raise Exception(f'Could not extract run number from {src_path}')
 
-    run_id = match.group(1)
+    sequence_date = datetime.strptime(match.group(1), r'%y%m%d')
+    run_id = match.group(2)
+    instrument_id = match.group(3)
+    run_number = match.group(4)
+    flowcell_id = match.group(5)
 
     # Upload each directory that contains fastq files
     for dirname in glob.glob(src_path + '*/'):
@@ -70,9 +100,18 @@ def upload(src_path, bucket, base_key, s3_endpoint_url):
 
         # S3 target
         project_code = basename(os.path.dirname(dirname))
-        key = f'{base_key}{project_code}/{run_id}'
+        key = f'{prefix}{project_code}/{run_id}'
 
-        # Upload      
+        # Upload
+        utils.upload_json(bucket, f"{key}/meta.json", s3_endpoint_url, {
+            "project_code": project_code,
+            "instrument_id": instrument_id,
+            "run_number": run_number,
+            "run_id": run_id,
+            "flowcell_id": flowcell_id, 
+            "sequence_date": str(sequence_date.date()),
+            "upload_time": str(datetime.now())
+        })
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
         
 

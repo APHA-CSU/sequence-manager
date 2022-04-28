@@ -1,8 +1,8 @@
-import boto3
-import botocore
+import json
 import subprocess
 
-
+import boto3
+import botocore
 
 def s3_object_exists(bucket, key, endpoint_url):
     """
@@ -48,5 +48,17 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
     if return_code:
         raise Exception('aws s3 sync failed: %s'%(return_code))
 
-if __name__ == '__main__':
-    print('key exists: ', s3_object_exists('s3-csu-003', 'aaron/'))
+def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
+    """
+        Upload json data to s3
+
+        bucket: S3 Bucket Name
+        key: S3 key the json file is stored under
+        dictionary: json serialisable python dictionary for S3 upload 
+        endpoint_url: S3 endpoint url
+        indent: Number of indentation spaces in the json
+    """
+    s3 = boto3.resource('s3', endpoint_url=endpoint_url)
+    obj = s3.Object(bucket, key)
+
+    obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
