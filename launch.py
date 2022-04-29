@@ -12,13 +12,11 @@ from s3_logging_handler import S3LoggingHandler
 # Launch and manage jobs for the TB reprocess
 
 # TODO: set image to prod
-DEFAULT_IMAGE = "aaronsfishman/bov-tb:master"
-
-# TODO: update uris
-DEFAULT_RESULTS_PREFIX_URI = "s3://s3-staging-area/AaronFishman/"
-DEFAULT_BATCHES_URI = "s3://s3-staging-area/AaronFishman/batches.csv"
-LOGGING_BUCKET = "s3-staging-area"
-LOGGING_PREFIX = "AaronFishman/logs/"
+DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
+DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
+DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
+LOGGING_BUCKET = "s3-csu-001"
+LOGGING_PREFIX = "logs/"
 
 def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DEFAULT_BATCHES_URI):
     """ Launches a job for a specific EC2 instance """
