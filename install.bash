@@ -17,4 +17,5 @@ sudo apt-get -y install python3 python3-pip docker.io systemctl
 
 # python 
 sudo pip3 install biopython numpy pandas gitpython boto3
+sudo pip3 install --upgrade awscli
 
