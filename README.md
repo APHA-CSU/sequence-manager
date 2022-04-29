@@ -18,6 +18,8 @@ The device has two physical storage volumes:
 
 ### Remote Access to `wey-001`
 
+TODO: explain how illuminashae has been setup
+
 `wey-001` can be accessed remotely from a DEFRA computer using SSH. The `illuminashare` user is the common access user that runs production services. If you are not performing maintainance on the production service, you should login with your personal SCE username. To SSH into `wey-001`: 
 1. SSH into the `ssh.int.sce.network` jumphost (see the [SCE SPOL article](https://defra.sharepoint.com/teams/Team741/SitePages/SSH-access-to-virtual-machine.aspx) for more information). This can be done through putty / cmd / an EC2 instance. 
 2. SSH into `wey-001` from the jumphost: ```ssh username@wey-001```
@@ -59,6 +61,8 @@ Example of converted fastq output stored under `/Illumina/OutputFastq/FastqRuns/
 
 The example would generate a `meta.json` under `s3://s3-csu-001/SB4030/NB501786_0396/meta.json` that looks like:
 
+TODO: These are the meta.json's for TB and Salmonela ....
+
 ```
 {
     "project_code": "SB4030",
@@ -90,6 +94,8 @@ To run `bcl_manager.py`, python dependancies need to be installed:
 cd /path/to/repo/
 pip install -r requirements.txt
 ```
+
+TODO: install bcl2fastq and put it on the PATH
 
 ### Running the bcl manager in development
 
