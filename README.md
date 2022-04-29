@@ -163,7 +163,7 @@ Once the error has been diagnosed and fixed by a maintainer, `bcl_manager.py` ca
 
 ## TB Reprocessing
 
-This repo also contains automation capabilities for reprocessing APHA's TB WGS Samples. The solution works by processing batches of samples in parallel across multiple EC2 instances. Each individual EC2 instance runs one batch at a time and log to their progress to a S3 bucket during processing. 
+This repo also contains automation capabilities for reprocessing APHA's TB WGS Samples. The solution works by processing batches of samples in parallel across multiple EC2 instances. Each individual EC2 instance runs one batch at a time and logs progress to a S3 bucket during processing. 
 
 ### Workflow
 
@@ -183,7 +183,7 @@ The first step is to prepare a summary of the raw `fastq.gz` TB samples that are
 python summary.py
 ```
 
-This command produces three summary csv files:
+This command produces four summary csv files:
 - `samples.csv` - URI location of read pair files and associated metadata for each sequenced sample
 - `batches.csv` - Batches of samples. Each run of the sequencer corresponds to a batch. Additional datasets manually curated by Richard are also included
 - `not_parsed.csv` - Files in the buckets that do not conform to the sample naming convention. No `fastq.gz` should be included here. 
