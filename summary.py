@@ -18,7 +18,7 @@ def pair_files(keys):
     
         Returns four dataframes: 
             samples - paired samples from the keys
-            plates - summary of groupings of samples
+            batches - summary of groupings of samples
             unpaired - keys that didn't form a sample pair
             not_parsed - keys that were unparsable
 
@@ -91,7 +91,7 @@ def pair_files(keys):
             "lane": match_1[6]
         }
 
-        sample["plate_id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
+        sample["batch_id"] = f'{sample["sequencer"]}_{sample["run_id"]}' 
         samples.append(sample)
 
     # Last key remaining
@@ -102,30 +102,30 @@ def pair_files(keys):
     unpaired = pd.DataFrame(unpaired, columns=['unpaired'])
     not_parsed = pd.DataFrame(not_parsed, columns=['not_parsed'])
 
-    plates = plate_summary(samples)
+    batches = batch_summary(samples)
 
     return (samples,
-        plates,
+        batches,
         unpaired,
         not_parsed        
     )
 
-def plate_summary(samples):
-    """ Returns a dataframe that summarises the plates that feature in a samples dataframe as produced by pair_keys """
-    # Group by plate_id
-    df = samples.groupby("plate_id")
+def batch_summary(samples):
+    """ Returns a dataframe that summarises the batches that feature in a samples dataframe as produced by pair_keys """
+    # Group by batch_id
+    df = samples.groupby("batch_id")
 
-    # Plate metadata from an arbitrary sample.
+    # Batch metadata from an arbitrary sample.
     # TODO: Ensure these columns are consistent across each group
     summary = df.max().loc[:, ['sequencer', 'run_id', 'project_code']]
 
-    # Additional plate columns: num_samples / plate_id / uri prefix
-    plate_sizes = df.size().to_frame().rename(columns={0: "num_samples"})
-    summary = summary.merge(plate_sizes, left_on="plate_id", right_on="plate_id")
+    # Additional batch columns: num_samples / batch_id / uri prefix
+    batch_sizes = df.size().to_frame().rename(columns={0: "num_samples"})
+    summary = summary.merge(batch_sizes, left_on="batch_id", right_on="batch_id")
 
     summary["prefix"] = df.apply(lambda x: os.path.dirname(x["read_1"].max()) + '/')
 
-    # more convenient to have the plate_id as a column rather than the index
+    # more convenient to have the batch_id as a column rather than the index
     summary = summary.reset_index(level=0)
     
     return summary
@@ -138,25 +138,25 @@ def bucket_summary(bucket, prefixes):
         keys.extend(list_keys(bucket, prefix))
 
     # Parse
-    samples, plates, unpaired, not_parsed = pair_files(keys)
+    samples, batches, unpaired, not_parsed = pair_files(keys)
 
     # Include bucket name
     samples["bucket"] = bucket
-    plates["bucket"] = bucket
+    batches["bucket"] = bucket
     unpaired["bucket"] = bucket
     not_parsed["bucket"] = bucket
 
-    return samples, plates, unpaired, not_parsed
+    return samples, batches, unpaired, not_parsed
 
 def main():
     """ summarises the TB samples. Produces a number of csvs locally """
     # Summarise
-    samples_1, plates_1, unpaired_1, not_parsed_1 = bucket_summary('s3-csu-001', ['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/'])
-    samples_2, plates_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
+    samples_1, batches_1, unpaired_1, not_parsed_1 = bucket_summary('s3-csu-001', ['SB4030/', 'SB4030-TB/', 'SB4020/', 'SB4020-TB/'])
+    samples_2, batches_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
 
     # Combine + csv output
     pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv')
-    pd.concat([plates_1, plates_2], ignore_index=True).to_csv('plates.csv')
+    pd.concat([batches_1, batches_2], ignore_index=True).to_csv('batches.csv')
     pd.concat([unpaired_1, unpaired_2], ignore_index=True).to_csv('unpaired.csv')
     pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
 

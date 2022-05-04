@@ -18,6 +18,8 @@ The device has two physical storage volumes:
 
 ### Remote Access to `wey-001`
 
+TODO: explain how illuminashae has been setup
+
 `wey-001` can be accessed remotely from a DEFRA computer using SSH. The `illuminashare` user is the common access user that runs production services. If you are not performing maintainance on the production service, you should login with your personal SCE username. To SSH into `wey-001`: 
 1. SSH into the `ssh.int.sce.network` jumphost (see the [SCE SPOL article](https://defra.sharepoint.com/teams/Team741/SitePages/SSH-access-to-virtual-machine.aspx) for more information). This can be done through putty / cmd / an EC2 instance. 
 2. SSH into `wey-001` from the jumphost: ```ssh username@wey-001```
@@ -59,6 +61,8 @@ Example of converted fastq output stored under `/Illumina/OutputFastq/FastqRuns/
 
 The example would generate a `meta.json` under `s3://s3-csu-001/SB4030/NB501786_0396/meta.json` that looks like:
 
+TODO: These are the meta.json's for TB and Salmonela ....
+
 ```
 {
     "project_code": "SB4030",
@@ -90,6 +94,8 @@ To run `bcl_manager.py`, python dependancies need to be installed:
 cd /path/to/repo/
 pip install -r requirements.txt
 ```
+
+TODO: install bcl2fastq and put it on the PATH
 
 ### Running the bcl manager in development
 
@@ -154,3 +160,73 @@ Once the error has been diagnosed and fixed by a maintainer, `bcl_manager.py` ca
 
 ![image](https://user-images.githubusercontent.com/6979169/124142307-0803c300-da82-11eb-9902-a2404c526c36.png)
 
+
+## TB Reprocessing
+
+This repo also contains automation capabilities for reprocessing APHA's TB WGS Samples. The solution works by processing batches of samples in parallel across multiple EC2 instances. Each individual EC2 instance runs one batch at a time and logs progress to a S3 bucket during processing. 
+
+### Workflow
+
+To reprocess the TB samples:
+
+1. Run `summary.py` to generate a `batches.csv` file.
+2. Plan how jobs will be delegated to machines by adding a `job_id` column to the `batches.csv` file
+3. Configure the `launch.py` script
+4. Launch jobs on EC2 machines
+
+See below for details on how to perform each step. 
+
+### (1) Summary of Raw TB Samples
+
+The first step is to prepare a summary of the raw `fastq.gz` TB samples that are stored in the CSU `s3-csu-001` and `s3-csu-002` buckets:
+```
+python summary.py
+```
+
+This command produces four summary csv files:
+- `samples.csv` - URI location of read pair files and associated metadata for each sequenced sample
+- `batches.csv` - Batches of samples. Each run of the sequencer corresponds to a batch. Additional datasets manually curated by Richard are also included
+- `not_parsed.csv` - Files in the buckets that do not conform to the sample naming convention. `fastq.gz` files that do not follow the name convention are included here. These files should be renamed so they meet the naming convention: `<NAME>_S<WELL>_R<READ>_<LANE>.fastq.gz`, where `NAME` is alphanumeric and `WELL`, `READ` and `LANE` are integers. 
+- `unpaired.csv` - Fastq files that do not have a read pair. Ideally this file should be empty.
+
+Examine each of these files to gain an understanding of the data that exists, and perform any administration on errors that you may find. For example, you might find samples in `not_parsed.csv` that need to be renamed. Or you might find unpaired data in `unpaired.csv`.
+
+### (2) Setting the `job_id`
+
+Each individual EC2 machine runs a set batches one at a time. This step sets which batches run on which machines. 
+
+Sets of batches are identified by the `job_id`. When a reprocessing job is launched on a machine with `launch.bash job_id`, a process downloads a `batches.csv` file from S3 and filters rows based on the `job_id`.
+
+To prepare the `batches.csv` file:
+- Append a column to the `batches.csv` file from step (1). I reccomend excel or libreoffice
+- Fill out the rows in the `job_id` column. The id does not have to follow a specific format. e.g. "A", "3", "CSU-004" are all valid. 
+- Upload the `batches.csv` to a location on S3 that is reachable by the job machines
+
+### (3) Configuring the launch script
+
+(a) Open the `launch.py` script and configure the global variables at the top
+- `DEFAULT_IMAGE` - the docker image the job should run. Should be `prod` once the latest version of btb-seq is released. 
+- `DEFAULT_BATCHES_URI` - S3 URI that points to the `batches.csv` file uploaded in step (2) 
+- `DEFAULT_RESULTS_PREFIX_URI` - S3 URI prefix where results are stored
+- `LOGGING_BUCKET` - S3 bucket that stores URIs, e.g. `s3-csu-003`
+- `LOGGING_PREFIX` - S3 prefix that the log file is stored. The log file is stored under `s3://<LOGGING_BUCKET>/<LOGGING_PREFIX><JOB_ID>.log`
+
+(b) Push the changes to a branch and commit to github
+
+(c) To avoid timely github SSH authentication setup during step (4), upload the code to a location on S3. For example:
+```
+aws s3 cp --recursive ./ s3://s3-csu-001/sequence-manager
+```
+
+### (4) Launch jobs on EC2 machines
+
+For each job machine:
+- SSH into the job machine via the SCE jumphost, `ssh.int.sce.network`
+- copy the repo from S3
+```
+aws s3 cp --recursive s3://s3-csu-001/sequence-manager ./
+```
+- launch the job
+```
+sudo bash launch.bash job_id
+```

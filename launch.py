@@ -12,32 +12,30 @@ from s3_logging_handler import S3LoggingHandler
 # Launch and manage jobs for the TB reprocess
 
 # TODO: set image to prod
-DEFAULT_IMAGE = "aaronsfishman/bov-tb:master"
+DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
+DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
+DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
+LOGGING_BUCKET = "s3-csu-001"
+LOGGING_PREFIX = "logs/"
 
-# TODO: update uris
-DEFAULT_ENDPOINT = "s3://s3-staging-area/AaronFishman/"
-DEFAULT_PLATES_URI = "s3://s3-staging-area/AaronFishman/plates.csv"
-LOGGING_BUCKET = "s3-staging-area"
-LOGGING_PREFIX = "AaronFishman/logs/"
-
-def launch(job_id, endpoint=DEFAULT_ENDPOINT, plates_uri=DEFAULT_PLATES_URI):
+def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DEFAULT_BATCHES_URI):
     """ Launches a job for a specific EC2 instance """
 
-    # Download plates csv from S3
-    logging.info(f"Downloading plates csv from {plates_uri}")
-    subprocess.run(["aws", "s3", "cp", plates_uri, "./plates.csv"])
-    plates = pd.read_csv('./plates.csv')
-    plates = plates.loc[plates.job_id==job_id, :].reset_index(level=0)
+    # Download batches csv from S3
+    logging.info(f"Downloading batches csv from {batches_uri}")
+    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
+    batches = pd.read_csv('./batches.csv')
+    batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 
     # Process one plate at a time
-    for i, plate in plates.iterrows():
+    for i, batch in batches.iterrows():
         logging.info(f"""
-            Running plate {i+1}/{len(plates)}
-                bucket: {plate["bucket"]}
-                prefix: {plate["prefix"]}
+            Running batch {i+1}/{len(batch)}
+                bucket: {batch["bucket"]}
+                prefix: {batch["prefix"]}
         """)
-        reads_uri = f's3://{plate["bucket"]}/{plate["prefix"]}'
-        results_uri = f'{endpoint}/{plate["prefix"]}/'
+        reads_uri = f's3://{batch["bucket"]}/{batch["prefix"]}'
+        results_uri = f'{results_prefix_uri}/{batch["prefix"]}/'
         
         try:
             run_pipeline_s3(reads_uri, results_uri)
