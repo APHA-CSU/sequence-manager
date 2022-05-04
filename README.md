@@ -186,7 +186,7 @@ python summary.py
 This command produces four summary csv files:
 - `samples.csv` - URI location of read pair files and associated metadata for each sequenced sample
 - `batches.csv` - Batches of samples. Each run of the sequencer corresponds to a batch. Additional datasets manually curated by Richard are also included
-- `not_parsed.csv` - Files in the buckets that do not conform to the sample naming convention. No `fastq.gz` should be included here. 
+- `not_parsed.csv` - Files in the buckets that do not conform to the sample naming convention. `fastq.gz` files that do not follow the name convention are included here. These files should be renamed so they meet the naming convention: `<NAME>_S<WELL>_R<READ>_<LANE>.fastq.gz`, where `NAME` is alphanumeric and `WELL`, `READ` and `LANE` are integers. 
 - `unpaired.csv` - Fastq files that do not have a read pair. Ideally this file should be empty.
 
 Examine each of these files to gain an understanding of the data that exists, and perform any administration on errors that you may find. For example, you might find samples in `not_parsed.csv` that need to be renamed. Or you might find unpaired data in `unpaired.csv`.
@@ -206,14 +206,14 @@ To prepare the `batches.csv` file:
 
 (a) Open the `launch.py` script and configure the global variables at the top
 - `DEFAULT_IMAGE` - the docker image the job should run. Should be `prod` once the latest version of btb-seq is released. 
-- `DEFAULT_PLATES_URI` - S3 URI that points to the `batches.csv` file uploaded in step (2) 
-- `DEFAULT_ENDPOINT` - S3 URI prefix where results are stored
-- `LOGGING_BUCKET` - S3 bucket that stores URIs
-- `LOGGING_PREFIX` - S3 prefix that the log file is stored. 
+- `DEFAULT_BATCHES_URI` - S3 URI that points to the `batches.csv` file uploaded in step (2) 
+- `DEFAULT_RESULTS_PREFIX_URI` - S3 URI prefix where results are stored
+- `LOGGING_BUCKET` - S3 bucket that stores URIs, e.g. `s3-csu-003`
+- `LOGGING_PREFIX` - S3 prefix that the log file is stored. The log file is stored under `s3://<LOGGING_BUCKET>/<LOGGING_PREFIX><JOB_ID>.log`
 
-(b) Commit the changes to a branch and commit to github
+(b) Push the changes to a branch and commit to github
 
-(c) To avoid github authentication setup during step (4), upload the code to a location on S3. For example:
+(c) To avoid timely github SSH authentication setup during step (4), upload the code to a location on S3. For example:
 ```
 aws s3 cp --recursive ./ s3://s3-csu-001/sequence-manager
 ```
