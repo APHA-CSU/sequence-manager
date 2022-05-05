@@ -1,4 +1,4 @@
-#set -eo pipefail
+set -eo pipefail
 
 #================================================================
 # install.bash
