@@ -10,8 +10,6 @@ set -eo pipefail
 sudo apt-get update
 sudo apt-get -y install python3 \
 			python3-pip \
-			docker.io \
-			systemctl \
     			ca-certificates \
 	        	curl \
 		    	gnupg \
