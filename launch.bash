@@ -11,4 +11,4 @@ set -eo pipefail
 
 JOB_ID=$1
 
-screen -m bash -c "bash install.bash; python3 launch.py $JOB_ID; exec sh"
+screen -m bash -c "bash install.bash; sudo python3 launch.py $JOB_ID; exec bash"
