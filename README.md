@@ -130,6 +130,7 @@ python bcl_manager.py
 ```
 Ctrl+a d
 ```
+![Capture](https://user-images.githubusercontent.com/10742324/167160545-f501a831-0bf5-40f5-8278-e95f34a39977.PNG)
 
 The SSH tunnel can then be terminated with the Bcl Manager still running. To return to the screen, SSH into `wey-001` and call:
 ```
