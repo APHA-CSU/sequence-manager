@@ -230,3 +230,4 @@ aws s3 cp --recursive s3://s3-csu-001/sequence-manager ./
 ```
 sudo bash launch.bash job_id
 ```
+- this will start a new screen session: once dependencies are installed and the first plate is running in Nextflow, detached from the screen (crtl+a d) and close the SSH session
