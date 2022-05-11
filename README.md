@@ -84,7 +84,7 @@ A similar `meta.json` would also be stored under `s3://s3-csu-001/FZ2000/NB50178
 - Conversion of raw `.bcl` data into `.fastq`
 - Upload of `.fastq` files to S3 according to project code
 
-For monitoring purposes, the manager logs events to `./bcl-manager.log` and S3 (default: `s3://s3-csu-001/aaron/logs/bcl-manager.log`)
+For monitoring purposes, the manager logs events to `./bcl-manager.log` and S3 (default: `s3://s3-csu-001/logs/bcl-manager.log`)
 
 ### Installation
 
@@ -130,6 +130,7 @@ python bcl_manager.py
 ```
 Ctrl+a d
 ```
+![Capture](https://user-images.githubusercontent.com/10742324/167160545-f501a831-0bf5-40f5-8278-e95f34a39977.PNG)
 
 The SSH tunnel can then be terminated with the Bcl Manager still running. To return to the screen, SSH into `wey-001` and call:
 ```
@@ -154,7 +155,7 @@ The Bcl Manager is designed to exit if processing fails in any way. This could o
 2. Duplicate run id
 3. Low space on `wey-001`
 
-Error information is automatically logged and uploaded to `s3://s3-csu-003/aaron/logs/bcl-manager.log` in the event of processing failure. The available space on `wey-001` is also reported at the end of each run.
+Error information is automatically logged and uploaded to `s3://s3-csu-003/logs/bcl-manager.log` in the event of processing failure. The available space on `wey-001` is also reported at the end of each run.
 
 Once the error has been diagnosed and fixed by a maintainer, `bcl_manager.py` can be restarted as described above.
 
@@ -230,3 +231,4 @@ aws s3 cp --recursive s3://s3-csu-001/sequence-manager ./
 ```
 sudo bash launch.bash job_id
 ```
+- this will start a new screen session: once dependencies are installed and the first plate is running in Nextflow, detached from the screen (crtl+a d) and close the SSH session
