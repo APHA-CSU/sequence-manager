@@ -34,8 +34,8 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
                 bucket: {batch["bucket"]}
                 prefix: {batch["prefix"]}
         """)
-        reads_uri = f's3://{batch["bucket"]}/{batch["prefix"]}'
-        results_uri = f'{results_prefix_uri}/{batch["prefix"]}/'
+        reads_uri = os.path.join(f's3://{batch["bucket"]}',batch["prefix"])
+        results_uri = os.path.join(results_prefix_uri, batch["prefix"])
         
         try:
             run_pipeline_s3(reads_uri, results_uri)
