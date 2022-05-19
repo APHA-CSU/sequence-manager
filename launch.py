@@ -39,7 +39,7 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
         results_uri = os.path.join(results_prefix_uri, batch["prefix"])
         
         try:
-            run_pipeline_s3(reads_uri, results_uri)
+            run_pipeline(reads_uri, results_uri)
 
         except Exception as e:
             # NOTE: this is failing quietly, do we want this? I wonder if the exception should
@@ -47,28 +47,24 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
             # this will make it easier to manage missing output.
             logging.exception(e)
 
-def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
-    """ Run pipeline from S3 uris """
-    
+def run_pipeline(reads_uri, results_uri, image=DEFAULT_IMAGE):
+    """ Run the pipeline using docker """
+
     # Validate input
     if not reads_uri.startswith("s3://"):
         raise Exception(f"Invalid reads uri: {reads_uri}")
 
     if not results_uri.startswith("s3://"):
         raise Exception(f"Invalid results uri: {results_uri}")
-    
-    run_pipeline(reads_uri, results_uri)
 
-def run_pipeline(reads, results, image=DEFAULT_IMAGE):
-    """ Run the pipeline using docker """
     # run
     try:
-        #subprocess.run(["nextflow", "run", "APHA-CSU/btb-seq", "-with-docker", ":".split(image)[0], "-r", ":".split(image)[1],
         branch = image.split(":")[1]
         ps = subprocess.run(f"nextflow run APHA-CSU/btb-seq -with-docker {image} -r {branch} "
-                       f"--reads='{reads}*_{{S*_R1,S*_R2}}*.fastq.gz' --outdir='{results}'", 
+                       f"--reads='{reads_uri}*_{{S*_R1,S*_R2}}*.fastq.gz' --outdir='{results_uri}'", 
                        shell=True, check=True, capture_output=True) 
         print(ps.stdout.decode())
+
     except subprocess.CalledProcessError as process_error:
         raise Exception(f"\nfailed process: \n\t'{process_error.cmd}' \n\nexit code: \n\t'{process_error.returncode}' \n\n"
               f"output: \n\t'{process_error.stdout.decode()}'\n\n")
