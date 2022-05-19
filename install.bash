@@ -9,12 +9,18 @@ set -eo pipefail
 # apt
 sudo apt-get update
 sudo apt-get -y install python3 \
-			python3-pip \
+				python3-pip \
     			ca-certificates \
 	        	curl \
 		    	gnupg \
-		        lsb-release
+		        lsb-release \
+				default-jre \
+				wget \
+				git
 
+# nextflow
+wget -qO- https://get.nextflow.io | bash
+sudo ln -s $PWD/nextflow /usr/local/bin/nextflow
 
 # docker
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
