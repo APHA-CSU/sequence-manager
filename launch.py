@@ -42,6 +42,7 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
 
         except Exception as e:
             logging.exception(e)
+            raise e
 
 def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
     """ Run pipeline from S3 uris """
