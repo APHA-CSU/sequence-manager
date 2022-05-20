@@ -25,7 +25,6 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
     logging.info(f"Downloading batches csv from {batches_uri}")
     #subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
     batches = pd.read_csv('./batches.csv')
-    job_id = 1
     batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 
     # Process one plate at a time
