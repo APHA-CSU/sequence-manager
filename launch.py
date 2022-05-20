@@ -16,7 +16,7 @@ DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
 DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
 LOGGING_BUCKET = "s3-csu-001"
-LOGGING_PREFIX = "logs/"
+LOGGING_PREFIX = "logs"
 
 def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DEFAULT_BATCHES_URI):
     """ Launches a job for a specific EC2 instance """
@@ -34,14 +34,15 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
                 bucket: {batch["bucket"]}
                 prefix: {batch["prefix"]}
         """)
-        reads_uri = f's3://{batch["bucket"]}/{batch["prefix"]}'
-        results_uri = f'{results_prefix_uri}/{batch["prefix"]}/'
+        reads_uri = os.path.join(f's3://{batch["bucket"]}',batch["prefix"])
+        results_uri = os.path.join(results_prefix_uri, batch["prefix"])
         
         try:
             run_pipeline_s3(reads_uri, results_uri)
 
         except Exception as e:
             logging.exception(e)
+            raise e
 
 def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
     """ Run pipeline from S3 uris """
@@ -80,13 +81,11 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
 
     # pull and run
     subprocess.run(["sudo", "docker", "pull", image], check=True)
-    subprocess.run([
-        "sudo", "docker", "run", "--rm", "-it",
-        "-v", f"{reads}:/reads/",
-        "-v", f"{results}:/results/",
-        image,
-        "bash", "./btb-seq", "/reads/", "/results/",
-    ], check=True)
+    ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
+                         "-v", f"{reads}:/reads/",
+                         "-v", f"{results}:/results/",
+                         image, "bash", "./btb-seq", "/reads/", "/results/",], 
+                         check=True)
 
 def main(args):
     # Parse
