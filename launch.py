@@ -13,18 +13,22 @@ from s3_logging_handler import S3LoggingHandler
 
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
-DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
+#DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
+DEFAULT_RESULTS_PREFIX_URI = "s3://s3-staging-area/nickpestell/v3/"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
-LOGGING_BUCKET = "s3-csu-001"
-LOGGING_PREFIX = "logs/"
+#LOGGING_BUCKET = "s3-csu-001"
+LOGGING_BUCKET = "s3-staging-area"
+#LOGGING_PREFIX = "logs/"
+LOGGING_PREFIX = "logs"
 
 def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DEFAULT_BATCHES_URI):
     """ Launches a job for a specific EC2 instance """
 
     # Download batches csv from S3
     logging.info(f"Downloading batches csv from {batches_uri}")
-    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
+    #subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
     batches = pd.read_csv('./batches.csv')
+    job_id = 1
     batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 
     # Process one plate at a time
@@ -81,13 +85,17 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
 
     # pull and run
     subprocess.run(["sudo", "docker", "pull", image], check=True)
-    subprocess.run([
-        "sudo", "docker", "run", "--rm", "-it",
-        "-v", f"{reads}:/reads/",
-        "-v", f"{results}:/results/",
-        image,
-        "bash", "./btb-seq", "/reads/", "/results/",
-    ], check=True)
+    try:
+        ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
+                             "-v", f"{reads}:/reads/",
+                             "-v", f"{results}:/results/",
+                             image, "bash", "./btb-seq", "/reads/", "/results/",], 
+                             check=True)#, capture_output=True)
+        #print(ps.stdout.decode())
+
+    except subprocess.CalledProcessError as process_error:
+        raise Exception(f"\nfailed process: \n\t'{process_error.cmd}' \n\nexit code: \n\t'{process_error.returncode}' \n\n"
+              f"output: \n\t'{process_error.stdout.decode()}'\n\n")
 
 def main(args):
     # Parse
