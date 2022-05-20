@@ -85,17 +85,11 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
 
     # pull and run
     subprocess.run(["sudo", "docker", "pull", image], check=True)
-    try:
-        ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
-                             "-v", f"{reads}:/reads/",
-                             "-v", f"{results}:/results/",
-                             image, "bash", "./btb-seq", "/reads/", "/results/",], 
-                             check=True)#, capture_output=True)
-        #print(ps.stdout.decode())
-
-    except subprocess.CalledProcessError as process_error:
-        raise Exception(f"\nfailed process: \n\t'{process_error.cmd}' \n\nexit code: \n\t'{process_error.returncode}' \n\n"
-              f"output: \n\t'{process_error.stdout.decode()}'\n\n")
+    ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
+                         "-v", f"{reads}:/reads/",
+                         "-v", f"{results}:/results/",
+                         image, "bash", "./btb-seq", "/reads/", "/results/",], 
+                         check=True)
 
 def main(args):
     # Parse
