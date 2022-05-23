@@ -5,6 +5,7 @@ import subprocess
 import os
 import tempfile
 import logging
+import glob
 
 import pandas as pd
 
@@ -14,22 +15,22 @@ from s3_logging_handler import S3LoggingHandler
 
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
-DEFAULT_RESULTS_BUCKET = "s3-csu-003"
-DEFAULT_RESULTS_PREFIX = "v3"
+DEFAULT_RESULTS_BUCKET = "s3-staging-area"
+DEFAULT_RESULTS_PREFIX = "nickpestell/v3"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
-DEFAULT_SUMMARY_PREFIX = "v3/summary" 
+DEFAULT_SUMMARY_PREFIX = "nickpestell/v3/summary" 
 DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
-LOGGING_BUCKET = "s3-csu-001"
+LOGGING_BUCKET = "s3-staging-area"
 LOGGING_PREFIX = "logs"
 
-def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT_RESULTS_BUCKET, 
+def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT_RESULTS_PREFIX, 
            batches_uri=DEFAULT_BATCHES_URI, summary_prefix=DEFAULT_SUMMARY_PREFIX, 
            summary_filepath=DEFAULT_SUMMARY_FILEPATH):
     """ Launches a job for a specific EC2 instance """
 
     # Download batches csv from S3
     logging.info(f"Downloading batches csv from {batches_uri}")
-    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
+    #subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
     batches = pd.read_csv('./batches.csv')
     batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 
@@ -110,22 +111,22 @@ def append_summary(batch, results_uri, results_prefix, summary_filepath):
         s3 URIs.
     """
     # download metadata for the batch from AssignedWGSCluster csv file
-    with tempfile.TemporaryDirectory as temp_dirname:
-        dest_filepath = os.path.join(temp_dirname, "AssignedWGSCluster.csv") 
+    with tempfile.TemporaryDirectory() as temp_dirname:
         return_code = subprocess.run(['aws', 's3', 'sync',
             '--exclude', '*',
             '--include', '*AssignedWGSCluster*.csv',
-            results_uri, dest_filepath
+            results_uri, temp_dirname
         ]).returncode
         if return_code:
             raise Exception( f"Error downloading AssignWGSCluster files: aws returned error code {return_code}")
         # read into pandas df
-        df = pd.read_csv(dest_filepath)
+        dest_filepath = glob.glob(os.path.join(temp_dirname, "*", "*AssignedWGSCluster*.csv"))
+        df = pd.read_csv(dest_filepath[0])
     # add columns for reads and results URIs
     df["reads_bucket"] = batch["bucket"]
     df["reads_prefix"] = batch["prefix"]
     df["results_bucket"] = "s3-csu-003"
-    df["results_prefix"] = os.path.join(results_prefix, batch["prefix"])
+    df["results_prefix"] = results_prefix
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
@@ -134,16 +135,6 @@ def append_summary(batch, results_uri, results_prefix, summary_filepath):
     else:
         df_summary = df
     df_summary.to_csv(summary_filepath)
-
-def s3_sync(s3_uri, dest_dir):
-    """ s3_sync
-    Download WGS metadata and consensus files from S3
-    Positional argments:
-        s3_uris- (list) S3 URIs
-        dest_dir- (string) directory of where to store data to
-    """
-
-    # Download AssignWGSCluster csvs from S3
 
 def main(args):
     # Parse
