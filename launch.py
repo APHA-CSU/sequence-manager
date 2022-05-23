@@ -1,4 +1,5 @@
 import argparse
+from asyncore import file_dispatcher
 import sys
 import subprocess
 import os
@@ -13,12 +14,17 @@ from s3_logging_handler import S3LoggingHandler
 
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
-DEFAULT_RESULTS_PREFIX_URI = "s3://s3-csu-003/v3/"
+DEFAULT_RESULTS_BUCKET = "s3-csu-003"
+DEFAULT_RESULTS_PREFIX = "v3"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
+DEFAULT_SUMMARY_PREFIX = "v3/summary" 
+DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
 LOGGING_BUCKET = "s3-csu-001"
 LOGGING_PREFIX = "logs"
 
-def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DEFAULT_BATCHES_URI):
+def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT_RESULTS_BUCKET, 
+           batches_uri=DEFAULT_BATCHES_URI, summary_prefix=DEFAULT_SUMMARY_PREFIX, 
+           summary_filepath=DEFAULT_SUMMARY_FILEPATH):
     """ Launches a job for a specific EC2 instance """
 
     # Download batches csv from S3
@@ -34,15 +40,26 @@ def launch(job_id, results_prefix_uri=DEFAULT_RESULTS_PREFIX_URI, batches_uri=DE
                 bucket: {batch["bucket"]}
                 prefix: {batch["prefix"]}
         """)
-        reads_uri = os.path.join(f's3://{batch["bucket"]}',batch["prefix"])
-        results_uri = os.path.join(results_prefix_uri, batch["prefix"])
+        reads_uri = os.path.join(f's3://{batch["bucket"]}', batch["prefix"])
+        results_prefix = os.path.join(results_prefix, batch["prefix"])
+        results_uri = os.path.join(f's3://{results_bucket}', results_prefix)
         
         try:
             run_pipeline_s3(reads_uri, results_uri)
+            append_summary(batch, results_uri, results_prefix, summary_filepath)
 
         except Exception as e:
             logging.exception(e)
             raise e
+
+    # Push summary csv file to s3
+    summary_uri = os.path.join(f's3://{results_bucket}', summary_prefix, job_id)
+    try:
+        subprocess.run(["aws", "s3", "cp", summary_filepath, summary_uri], check=True)
+
+    except Exception as e:
+        logging.exception(e)
+        raise e
 
 def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
     """ Run pipeline from S3 uris """
@@ -86,6 +103,47 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          "-v", f"{results}:/results/",
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
+
+def append_summary(batch, results_uri, results_prefix, summary_filepath):
+    """
+        Appends to a summary csv file containing metadata for each sample including reads and results
+        s3 URIs.
+    """
+    # download metadata for the batch from AssignedWGSCluster csv file
+    with tempfile.TemporaryDirectory as temp_dirname:
+        dest_filepath = os.path.join(temp_dirname, "AssignedWGSCluster.csv") 
+        return_code = subprocess.run(['aws', 's3', 'sync',
+            '--exclude', '*',
+            '--include', '*AssignedWGSCluster*.csv',
+            results_uri, dest_filepath
+        ]).returncode
+        if return_code:
+            raise Exception( f"Error downloading AssignWGSCluster files: aws returned error code {return_code}")
+        # read into pandas df
+        df = pd.read_csv(dest_filepath)
+    # add columns for reads and results URIs
+    df["reads_bucket"] = batch["bucket"]
+    df["reads_prefix"] = batch["prefix"]
+    df["results_bucket"] = "s3-csu-003"
+    df["results_prefix"] = os.path.join(results_prefix, batch["prefix"])
+    # If summary file already exists locally - append to existing file
+    if os.path.exists(summary_filepath):
+        df_summary = pd.read_csv(summary_filepath)
+        df_summary = pd.concat([df_summary, df], ignore_index=True)
+    # else create new
+    else:
+        df_summary = df
+    df_summary.to_csv(summary_filepath)
+
+def s3_sync(s3_uri, dest_dir):
+    """ s3_sync
+    Download WGS metadata and consensus files from S3
+    Positional argments:
+        s3_uris- (list) S3 URIs
+        dest_dir- (string) directory of where to store data to
+    """
+
+    # Download AssignWGSCluster csvs from S3
 
 def main(args):
     # Parse
