@@ -16,14 +16,14 @@ from s3_logging_handler import S3LoggingHandler
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
 DEFAULT_RESULTS_BUCKET = "s3-staging-area"
-DEFAULT_RESULTS_PREFIX = "nickpestell/v3"
+DEFAULT_RESULTS_S3_PATH = "nickpestell/v3"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
 DEFAULT_SUMMARY_PREFIX = "nickpestell/v3/summary" 
 DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
 LOGGING_BUCKET = "s3-staging-area"
 LOGGING_PREFIX = "logs"
 
-def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT_RESULTS_PREFIX, 
+def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAULT_RESULTS_S3_PATH, 
            batches_uri=DEFAULT_BATCHES_URI, summary_prefix=DEFAULT_SUMMARY_PREFIX, 
            summary_filepath=DEFAULT_SUMMARY_FILEPATH):
     """ Launches a job for a specific EC2 instance """
@@ -42,16 +42,18 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT
                 prefix: {batch["prefix"]}
         """)
         reads_uri = os.path.join(f's3://{batch["bucket"]}', batch["prefix"])
-        results_prefix = os.path.join(results_prefix, batch["prefix"])
+        results_prefix = os.path.join(results_s3_path, batch["prefix"])
         results_uri = os.path.join(f's3://{results_bucket}', results_prefix)
-        
-        try:
-            run_pipeline_s3(reads_uri, results_uri)
-            append_summary(batch, results_uri, results_prefix, summary_filepath)
 
-        except Exception as e:
-            logging.exception(e)
-            raise e
+        # temp directory ensures we don't get lots of data accumulating
+        with tempfile.TemporaryDirectory() as temp_dirname:
+            try:
+                run_pipeline_s3(reads_uri, results_uri, temp_dirname)
+                append_summary(batch, results_prefix, summary_filepath, f'{temp_dirname}/results')
+
+            except Exception as e:
+                logging.exception(e)
+                raise e
 
     # Push summary csv file to s3
     summary_uri = os.path.join(f's3://{results_bucket}', summary_prefix, f'{job_id}.csv')
@@ -62,7 +64,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT
         logging.exception(e)
         raise e
 
-def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
+def run_pipeline_s3(reads_uri, results_uri, work_dir, image=DEFAULT_IMAGE):
     """ Run pipeline from S3 uris """
     
     # Validate input
@@ -72,23 +74,21 @@ def run_pipeline_s3(reads_uri, results_uri, image=DEFAULT_IMAGE):
     if not results_uri.startswith("s3://"):
         raise Exception(f"Invalid results uri: {results_uri}")
     
-    # Temp directory ensures we don't get lots of data accumulating
-    with tempfile.TemporaryDirectory() as temp_dirname:
-        # Make I/O Directories
-        temp_reads = f"{temp_dirname}/reads/"
-        temp_results = f"{temp_dirname}/results/"
+    # Make I/O Directories
+    temp_reads = f"{work_dir}/reads/"
+    temp_results = f"{work_dir}/results/"
 
-        os.makedirs(temp_reads)
-        os.makedirs(temp_results)
+    os.makedirs(temp_reads)
+    os.makedirs(temp_results)
 
-        # Download
-        subprocess.run(["aws", "s3", "cp", "--recursive", reads_uri, temp_reads], check=True)
-
-        # Run
-        run_pipeline(temp_reads, temp_results)
-
-        # Upload
-        subprocess.run(["aws", "s3", "cp", "--recursive", temp_results, results_uri], check=True)
+    # Download
+    subprocess.run(["aws", "s3", "cp", "--recursive", reads_uri, temp_reads], check=True)
+    
+    # Run
+    run_pipeline(temp_reads, temp_results)
+    
+    # Upload
+    subprocess.run(["aws", "s3", "cp", "--recursive", temp_results, results_uri], check=True)
 
 def run_pipeline(reads, results, image=DEFAULT_IMAGE):
     """ Run the pipeline using docker """
@@ -105,29 +105,22 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
 
-def append_summary(batch, results_uri, results_prefix, summary_filepath):
+def append_summary(batch, results_prefix, summary_filepath, results_path):
     """
         Appends to a summary csv file containing metadata for each sample including reads and results
         s3 URIs.
     """
     # download metadata for the batch from AssignedWGSCluster csv file
-    with tempfile.TemporaryDirectory() as temp_dirname:
-        return_code = subprocess.run(['aws', 's3', 'sync',
-            '--exclude', '*',
-            '--include', '*AssignedWGSCluster*.csv',
-            results_uri, temp_dirname
-        ]).returncode
-        if return_code:
-            raise Exception( f"Error downloading AssignWGSCluster files: aws returned error code {return_code}")
-        # read into pandas df
-        dest_filepath = glob.glob(os.path.join(temp_dirname, "*", "*AssignedWGSCluster*.csv"))
-        df = pd.read_csv(dest_filepath[0])
+    results_path = glob.glob(f'{results_path}/Results*')
+    results_path = results_path[0]
+    assigned_wgs_cluster_path = glob.glob(f'{results_path}/*AssignedWGSCluster*.csv')
+    df = pd.read_csv(assigned_wgs_cluster_path[0])
     # add columns for reads and results URIs
     df.insert(1, 'Submission', df['Sample'].map(lambda x: "-".join(x.split("-")[1:])))
     df["reads_bucket"] = batch["bucket"]
     df["reads_prefix"] = batch["prefix"]
     df["results_bucket"] = "s3-csu-003"
-    df["results_prefix"] = results_prefix
+    df["results_prefix"] = os.path.join(results_prefix, results_path.split(os.path.sep)[-1])
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
