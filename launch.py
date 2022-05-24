@@ -50,7 +50,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
         with tempfile.TemporaryDirectory() as temp_dirname:
             try:
                 run_pipeline_s3(reads_uri, results_uri, temp_dirname)
-                append_summary(batch, results_prefix, summary_filepath, f'{temp_dirname}/results')
+                append_summary(batch, results_prefix, summary_filepath, temp_dirname)
 
             except Exception as e:
                 logging.exception(e)
@@ -106,13 +106,13 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
 
-def append_summary(batch, results_prefix, summary_filepath, results_path):
+def append_summary(batch, results_prefix, summary_filepath, work_dir):
     """
         Appends to a summary csv file containing metadata for each sample including reads and results
         s3 URIs.
     """
     # download metadata for the batch from AssignedWGSCluster csv file
-    results_path = glob.glob(f'{results_path}/Results*')
+    results_path = glob.glob(f'{work_dir}/results/Results*')
     results_path = results_path[0]
     assigned_wgs_cluster_path = glob.glob(f'{results_path}/*AssignedWGSCluster*.csv')
     df = pd.read_csv(assigned_wgs_cluster_path[0])
@@ -120,9 +120,10 @@ def append_summary(batch, results_prefix, summary_filepath, results_path):
     df.insert(1, 'Submission', df['Sample'].map(lambda x: "-".join(x.split("-")[1:])))
     df.insert(2, "reads_bucket", batch["bucket"])
     df.insert(3, "reads_prefix", batch["prefix"])
-    df.insert(4, "results_bucket", "s3-csu-003")
-    df.insert(5, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
-    df.insert(6, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
+    df.insert(4, "project_code", batch["prefix"].split("/")[0])
+    df.insert(5, "results_bucket", "s3-csu-003")
+    df.insert(6, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
+    df.insert(7, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
