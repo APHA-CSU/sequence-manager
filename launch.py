@@ -54,7 +54,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_prefix=DEFAULT
             raise e
 
     # Push summary csv file to s3
-    summary_uri = os.path.join(f's3://{results_bucket}', summary_prefix, job_id)
+    summary_uri = os.path.join(f's3://{results_bucket}', summary_prefix, f'{job_id}.csv')
     try:
         subprocess.run(["aws", "s3", "cp", summary_filepath, summary_uri], check=True)
 
@@ -123,6 +123,7 @@ def append_summary(batch, results_uri, results_prefix, summary_filepath):
         dest_filepath = glob.glob(os.path.join(temp_dirname, "*", "*AssignedWGSCluster*.csv"))
         df = pd.read_csv(dest_filepath[0])
     # add columns for reads and results URIs
+    df.insert(1, 'Submission', df['Sample'].map(lambda x: "-".join(x.split("-")[1:])))
     df["reads_bucket"] = batch["bucket"]
     df["reads_prefix"] = batch["prefix"]
     df["results_bucket"] = "s3-csu-003"
@@ -130,11 +131,11 @@ def append_summary(batch, results_uri, results_prefix, summary_filepath):
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
-        df_summary = pd.concat([df_summary, df], ignore_index=True)
+        df_summary = pd.concat([df_summary, df]).reset_index(drop=True)
     # else create new
     else:
         df_summary = df
-    df_summary.to_csv(summary_filepath)
+    df_summary.to_csv(summary_filepath, index=False)
 
 def main(args):
     # Parse
