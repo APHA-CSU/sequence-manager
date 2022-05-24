@@ -6,6 +6,7 @@ import os
 import tempfile
 import logging
 import glob
+import time
 
 import pandas as pd
 
@@ -58,7 +59,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
     # Push summary csv file to s3
     summary_uri = os.path.join(f's3://{results_bucket}', summary_prefix, f'{job_id}.csv')
     try:
-        subprocess.run(["aws", "s3", "cp", summary_filepath, summary_uri], check=True)
+        subprocess.run(["aws", "s3", "cp", "--acl", "bucket-owner-full-control", summary_filepath, summary_uri], check=True)
 
     except Exception as e:
         logging.exception(e)
@@ -117,10 +118,11 @@ def append_summary(batch, results_prefix, summary_filepath, results_path):
     df = pd.read_csv(assigned_wgs_cluster_path[0])
     # add columns for reads and results URIs
     df.insert(1, 'Submission', df['Sample'].map(lambda x: "-".join(x.split("-")[1:])))
-    df["reads_bucket"] = batch["bucket"]
-    df["reads_prefix"] = batch["prefix"]
-    df["results_bucket"] = "s3-csu-003"
-    df["results_prefix"] = os.path.join(results_prefix, results_path.split(os.path.sep)[-1])
+    df.insert(2, "reads_bucket", batch["bucket"])
+    df.insert(3, "reads_prefix", batch["prefix"])
+    df.insert(4, "results_bucket", "s3-csu-003")
+    df.insert(5, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
+    df.insert(6, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
