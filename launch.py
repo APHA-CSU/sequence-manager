@@ -107,6 +107,12 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
 
+#TODO: make pass unit tests
+def extract_submission_no(sample_name):
+    """ Extracts submision number from sample name using regex """
+    pattern = r'^AF[\w]*-'
+    return re.sub(pattern, "", sample_name)
+
 def append_summary(batch, results_prefix, summary_filepath, work_dir):
     """
         Appends to a summary csv file containing metadata for each sample including reads and results
@@ -118,8 +124,7 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
     assigned_wgs_cluster_path = glob.glob(f'{results_path}/*AssignedWGSCluster*.csv')
     df = pd.read_csv(assigned_wgs_cluster_path[0])
     # add columns for reads and results URIs
-    pattern = r'^AF[A-Z]-|^AF-'
-    df.insert(1, 'Submission', df['Sample'].map(lambda x: re.sub(pattern, "", x)))
+    df.insert(1, 'Submission', df['Sample'].map(extract_submission_no))
     df.insert(2, "reads_bucket", batch["bucket"])
     df.insert(3, "reads_prefix", batch["prefix"])
     df.insert(4, "project_code", batch["prefix"].split("/")[0])

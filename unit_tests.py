@@ -1,10 +1,13 @@
 import unittest
 import unittest.mock
 from unittest.mock import Mock, MagicMock
-import random
+import argparse
+import sys
+import errno
 
 import watchdog
 import bcl_manager
+import launch
 from bcl_manager import SubdirectoryException
 
 class TestBclManager(unittest.TestCase):
@@ -139,5 +142,65 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
+class TestLaunch(unittest.TestCase):
+    def test_extract_submission_no(self):
+        test_input = ["AFxx-nn-nnnnn-yy",
+                      "ATxx-nn-nnnnn-yy",
+                      "AFx-nn-nnnnn-yy",
+                      "Ax-nn-nnnnn-yy",
+                      "AF-nn-nnnnn-yy",
+                      "AFxnn-nnnnn-yy",
+                      "A-nn-nnnnn-yy",
+                      "-nn-nnnnn-yy",
+                      "nn-nnnnn-yy",
+                      "12345678",
+                      "ABCDEFGH",
+                      ""]
+        test_output = ["nn-nnnnn-yy",
+                       "ATxx-nn-nnnnn-yy",
+                       "nn-nnnnn-yy",
+                       "Ax-nn-nnnnn-yy",
+                       "nn-nnnnn-yy",
+                       "AFxnn-nnnnn-yy",
+                       "A-nn-nnnnn-yy",
+                       "-nn-nnnnn-yy",
+                       "nn-nnnnn-yy",
+                       "12345678",
+                       "ABCDEFGH",
+                       ""]
+        for input, output in zip(test_input, test_output):
+            self.assertEqual(launch.extract_submission_no(input), output)
+
+def test_suit(test_objs):
+    suit = unittest.TestSuite(test_objs)
+    return suit
+
 if __name__ == '__main__':
-    unittest.main()
+    bcl_manager_test = [TestBclManager('test_handler_construction'),
+                        TestBclManager('test_on_create'),
+                        TestBclManager('test_copy'),
+                        # TODO: need to work out how to add positional arguments
+                        TestBclManager('assertOnCreatedProcessing'),
+                        TestBclManager('test_start'),
+                        TestBclManager('test_convert_to_fastq'),
+                        TestBclManager('test_upload')]
+    launch_test = [TestLaunch('test_extract_submission_no')]
+    runner = unittest.TextTestRunner()
+    parser = argparse.ArgumentParser(description='Test code')
+    module_arg = parser.add_argument('--module', '-m', nargs=1, 
+                                     help="module to test: 'bcl_manager' or 'launch'",
+                                     default=None)
+    args = parser.parse_args()
+    try:
+        if args.module:
+            if args.module[0] == 'bcl_manager':
+                runner.run(test_suit(bcl_manager_test)) 
+            elif args.module[0] == 'launch':
+                runner.run(test_suit(launch_test)) 
+            else:
+                raise argparse.ArgumentError(module_arg, "Invalid argument. Please use 'forward', 'reverse' or 'interface'")
+        else:
+            unittest.main()
+    except argparse.ArgumentError as e:
+        print(e)
+        sys.exit(errno.ENOENT)
