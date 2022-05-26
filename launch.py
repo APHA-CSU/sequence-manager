@@ -18,13 +18,13 @@ import summary
 
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
-DEFAULT_RESULTS_BUCKET = "s3-staging-area"
-DEFAULT_RESULTS_S3_PATH = "nickpestell/v3"
+DEFAULT_RESULTS_BUCKET = "s3-csu-003"
+DEFAULT_RESULTS_S3_PATH = "v3"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
-DEFAULT_SUMMARY_PREFIX = "nickpestell/v3/summary" 
-DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
-LOGGING_BUCKET = "s3-staging-area"
+DEFAULT_SUMMARY_PREFIX = "v3/summary" 
+LOGGING_BUCKET = "s3-csu-003"
 LOGGING_PREFIX = "logs"
+DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
 
 def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAULT_RESULTS_S3_PATH, 
            batches_uri=DEFAULT_BATCHES_URI, summary_prefix=DEFAULT_SUMMARY_PREFIX, 
@@ -33,7 +33,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
 
     # Download batches csv from S3
     logging.info(f"Downloading batches csv from {batches_uri}")
-    #subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
+    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
     batches = pd.read_csv('./batches.csv')
     batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 

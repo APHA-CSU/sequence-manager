@@ -238,4 +238,8 @@ sudo bash launch.bash job_id
 
 Each job machine will create a summary csv file which it appends to after each batch run. This is pushed to `s3://s3-csu-003/v3/summary/<job-id>.csv` at the end of the last batch. This CSV file contains relevant metadata for every sample's raw-reads and sequenced results including s3-uris for both. 
 
-When the last job machine has finished and all samples have been processed, the csv files for each job machine should be concatenated into a single csv file with a row for every sample that was processed. It will contain the following column names: sample_name, submission, project_code sequencer, run_id, well, read_1, read_2, lane, batch_id, reads_bucket, results_bucket results_prefix, sequenced_datetime, GenomeCov, MeanDepth, NumRawReads, pcMapped, Outcome, flag, group, CSSTested, matches, mismatches, noCoverage, anomalous.
+When the last job machine has finished and all samples have been processed, the csv files for each job machine should be concatenated into a single csv file with a row for every sample that was processed. It will contain the following column names:
+
+```
+sample_name | submission | project_code | sequencer | run_id | well | read_1 | read_2 | lane | batch_id | reads_bucket | results_bucket | results_prefix | sequenced_datetime | GenomeCov | MeanDepth | NumRawReads | pcMapped | Outcome | flag | group | CSSTested | matches | mismatches | noCoverage | anomalous
+```
