@@ -82,10 +82,10 @@ def pair_files(keys):
         # Create Sample Object
         sample = {
             "sample_name": match_1[3],
+            "submission": extract_submission_no(match_1[3]),
             "project_code": match_1[0],
             "sequencer": match_1[1] if match_1[1] else "UnknownSequencer",
             "run_id": match_1[2],
-            "submission": extract_submission_no(match_1[3]),
             "well": match_1[4],
             "read_1": key_1,
             "read_2": key_2,
@@ -142,7 +142,7 @@ def bucket_summary(bucket, prefixes):
     samples, batches, unpaired, not_parsed = pair_files(keys)
 
     # Include bucket name
-    samples["bucket"] = bucket
+    samples["reads_bucket"] = bucket
     batches["bucket"] = bucket
     unpaired["bucket"] = bucket
     not_parsed["bucket"] = bucket
