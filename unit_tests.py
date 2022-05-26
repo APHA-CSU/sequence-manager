@@ -144,17 +144,25 @@ class TestBclManager(unittest.TestCase):
 
 class TestLaunch(unittest.TestCase):
     def test_extract_submission_no(self):
+        # Test cases
+        # NOTE: only tests for removing preceeding AFxx from correctly formatted
+        # sample name. If the sample name is formattted incorectly, unexpected 
+        # behaviour may occur.
         test_input = ["AFxx-nn-nnnnn-yy",
                       "ATxx-nn-nnnnn-yy",
                       "AFx-nn-nnnnn-yy",
                       "Ax-nn-nnnnn-yy",
                       "AF-nn-nnnnn-yy",
                       "AFxnn-nnnnn-yy",
+                      "HI-12-3456-91",
                       "A-nn-nnnnn-yy",
-                      "-nn-nnnnn-yy",
+                      "nn-nnnnn-yy",
                       "nn-nnnnn-yy",
                       "12345678",
                       "ABCDEFGH",
+                      "HBCDEFGH",
+                      "HI-CDEFGH",
+                      "HICDEFGH",
                       ""]
         test_output = ["nn-nnnnn-yy",
                        "ATxx-nn-nnnnn-yy",
@@ -162,11 +170,15 @@ class TestLaunch(unittest.TestCase):
                        "Ax-nn-nnnnn-yy",
                        "nn-nnnnn-yy",
                        "AFxnn-nnnnn-yy",
+                       "12-3456-91",
                        "A-nn-nnnnn-yy",
-                       "-nn-nnnnn-yy",
+                       "nn-nnnnn-yy",
                        "nn-nnnnn-yy",
                        "12345678",
                        "ABCDEFGH",
+                       "HBCDEFGH",
+                       "CDEFGH",
+                       "HICDEFGH",
                        ""]
         for input, output in zip(test_input, test_output):
             self.assertEqual(launch.extract_submission_no(input), output)

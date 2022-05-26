@@ -110,7 +110,13 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
 #TODO: make pass unit tests
 def extract_submission_no(sample_name):
     """ Extracts submision number from sample name using regex """
-    pattern = r'^AF[\w]*-'
+    # NOTE: Only extracts the sample number from correctly formatted
+    # sample names (AF(xx)-)nn-(n)nnnn-yy, where brackets are optional.
+    # E.g. AFTa-98-12345-21 -> 98-12345-21 | 98-12345-21 -> 98-12345-21 | 
+    # 123456789 -> 123456789. If the sample name is formattted incorectly,
+    # e.g. AT98-12345-21 | AFT98-12345-21 | A-98-12345-21 this is likely 
+    # to remain unchanged. 
+    pattern = r'^AF[\w]{0,2}-|^HI-'
     return re.sub(pattern, "", sample_name)
 
 def append_summary(batch, results_prefix, summary_filepath, work_dir):
