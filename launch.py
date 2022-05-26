@@ -12,6 +12,7 @@ import re
 import pandas as pd
 
 from s3_logging_handler import S3LoggingHandler
+import summary
 
 # Launch and manage jobs for the TB reprocess
 
@@ -107,7 +108,6 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
 
-#TODO: make pass unit tests
 def extract_submission_no(sample_name):
     """ Extracts submision number from sample name using regex """
     # NOTE: Only extracts the sample number from correctly formatted
@@ -124,19 +124,16 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
         Appends to a summary csv file containing metadata for each sample including reads and results
         s3 URIs.
     """
+    df_reads, _, _, _ = summary.bucket_summary(batch["bucket"], batch["prefix"])
     # download metadata for the batch from AssignedWGSCluster csv file
     results_path = glob.glob(f'{work_dir}/results/Results*')
     results_path = results_path[0]
     assigned_wgs_cluster_path = glob.glob(f'{results_path}/*AssignedWGSCluster*.csv')
-    df = pd.read_csv(assigned_wgs_cluster_path[0])
+    df_results = pd.read_csv(assigned_wgs_cluster_path[0])
     # add columns for reads and results URIs
-    df.insert(1, 'Submission', df['Sample'].map(extract_submission_no))
-    df.insert(2, "reads_bucket", batch["bucket"])
-    df.insert(3, "reads_prefix", batch["prefix"])
-    df.insert(4, "project_code", batch["prefix"].split("/")[0])
-    df.insert(5, "results_bucket", "s3-csu-003")
-    df.insert(6, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
-    df.insert(7, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
+    df_results.insert(1, "results_bucket", "s3-csu-003")
+    df_results.insert(2, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
+    df_results.insert(3, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
     # If summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)

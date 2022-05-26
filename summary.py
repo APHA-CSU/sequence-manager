@@ -85,6 +85,7 @@ def pair_files(keys):
             "sequencer": match_1[1] if match_1[1] else "UnknownSequencer",
             "run_id": match_1[2],
             "name": match_1[3],
+            "submission": extract_submission_no(match_1[3]),
             "well": match_1[4],
             "read_1": key_1,
             "read_2": key_2,
@@ -147,6 +148,13 @@ def bucket_summary(bucket, prefixes):
     not_parsed["bucket"] = bucket
 
     return samples, batches, unpaired, not_parsed
+
+def extract_submission_no(sample_name):
+    """ Extracts submision number from sample name using regex """
+    pattern = r'\d{2,2}-\d{4,5}-\d{2,2}'
+    matches = re.findall(pattern, sample_name)
+    submission_no = matches[0] if matches else sample_name
+    return submission_no
 
 def main():
     """ summarises the TB samples. Produces a number of csvs locally """

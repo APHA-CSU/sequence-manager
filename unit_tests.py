@@ -142,7 +142,7 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
-class TestLaunch(unittest.TestCase):
+class TestSummary(unittest.TestCase):
     def test_extract_submission_no(self):
         # Test cases
         # NOTE: only tests for removing preceeding AFxx from correctly formatted
@@ -191,22 +191,22 @@ class TestLaunch(unittest.TestCase):
                        "12-34567-89",
                        "12-34567-89",
                        "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12-3456-89",
-                       "12345678",
-                       "ABCDEFGH",
-                       ""]
-        fail = False
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12-3456-89", 
+                       "12345678", 
+                       "ABCDEFGH", 
+                       ""] 
+        fail = False 
         i = 0
         for input, output in zip(test_input, test_output):
             try:
@@ -230,19 +230,19 @@ if __name__ == '__main__':
                         TestBclManager('test_start'),
                         TestBclManager('test_convert_to_fastq'),
                         TestBclManager('test_upload')]
-    launch_test = [TestLaunch('test_extract_submission_no')]
+    summary_test = [TestSummary('test_extract_submission_no')]
     runner = unittest.TextTestRunner()
     parser = argparse.ArgumentParser(description='Test code')
     module_arg = parser.add_argument('--module', '-m', nargs=1, 
-                                     help="module to test: 'bcl_manager' or 'launch'",
+                                     help="module to test: 'bcl_manager' or 'summary'",
                                      default=None)
     args = parser.parse_args()
     try:
         if args.module:
             if args.module[0] == 'bcl_manager':
                 runner.run(test_suit(bcl_manager_test)) 
-            elif args.module[0] == 'launch':
-                runner.run(test_suit(launch_test)) 
+            elif args.module[0] == 'summary':
+                runner.run(test_suit(summary_test)) 
             else:
                 raise argparse.ArgumentError(module_arg, "Invalid argument. Please use 'forward', 'reverse' or 'interface'")
         else:
