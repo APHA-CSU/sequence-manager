@@ -113,11 +113,11 @@ def extract_submission_no(sample_name):
     # NOTE: Only extracts the sample number from correctly formatted
     # sample names (AF(xx)-)nn-(n)nnnn-yy, where brackets are optional.
     # E.g. AFTa-98-12345-21 -> 98-12345-21 | 98-12345-21 -> 98-12345-21 | 
-    # 123456789 -> 123456789. If the sample name is formattted incorectly,
-    # e.g. AT98-12345-21 | AFT98-12345-21 | A-98-12345-21 this is likely 
-    # to remain unchanged. 
-    pattern = r'^AF[\w]{0,2}-|^HI-'
-    return re.sub(pattern, "", sample_name)
+    # 123456789 -> 123456789.
+    pattern = r'\d{2,2}-\d{4,5}-\d{2,2}'
+    matches = re.findall(pattern, sample_name)
+    submission_no = matches[0] if matches else sample_name
+    return submission_no
 
 def append_summary(batch, results_prefix, summary_filepath, work_dir):
     """
