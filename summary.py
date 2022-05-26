@@ -81,10 +81,10 @@ def pair_files(keys):
 
         # Create Sample Object
         sample = {
+            "sample_name": match_1[3],
             "project_code": match_1[0],
             "sequencer": match_1[1] if match_1[1] else "UnknownSequencer",
             "run_id": match_1[2],
-            "name": match_1[3],
             "submission": extract_submission_no(match_1[3]),
             "well": match_1[4],
             "read_1": key_1,
@@ -163,7 +163,7 @@ def main():
     samples_2, batches_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
 
     # Combine + csv output
-    pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv')
+    pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv', index=False)
     pd.concat([batches_1, batches_2], ignore_index=True).to_csv('batches.csv')
     pd.concat([unpaired_1, unpaired_2], ignore_index=True).to_csv('unpaired.csv')
     pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
