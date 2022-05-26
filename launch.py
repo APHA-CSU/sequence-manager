@@ -108,24 +108,13 @@ def run_pipeline(reads, results, image=DEFAULT_IMAGE):
                          image, "bash", "./btb-seq", "/reads/", "/results/",], 
                          check=True)
 
-def extract_submission_no(sample_name):
-    """ Extracts submision number from sample name using regex """
-    # NOTE: Only extracts the sample number from correctly formatted
-    # sample names (AF(xx)-)nn-(n)nnnn-yy, where brackets are optional.
-    # E.g. AFTa-98-12345-21 -> 98-12345-21 | 98-12345-21 -> 98-12345-21 | 
-    # 123456789 -> 123456789.
-    pattern = r'\d{2,2}-\d{4,5}-\d{2,2}'
-    matches = re.findall(pattern, sample_name)
-    submission_no = matches[0] if matches else sample_name
-    return submission_no
-
 def append_summary(batch, results_prefix, summary_filepath, work_dir):
     """
         Appends to a summary csv file containing metadata for each sample including reads and results
         s3 URIs.
     """
     # get reads metadata
-    df_reads, _, _, _ = summary.bucket_summary(batch["bucket"], batch["prefix"])
+    df_reads, _, _, _ = summary.bucket_summary(batch["bucket"], [batch["prefix"]])
     # download metadata for the batch from AssignedWGSCluster csv file
     results_path = glob.glob(f'{work_dir}/results/Results*')
     results_path = results_path[0]
