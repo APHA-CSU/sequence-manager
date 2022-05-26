@@ -114,7 +114,7 @@ When updating / running the bcl manager in production, it is essential to protec
 4. Perform any maintainance tasks, e.g. software updates
 5. Ensure unit tests pass
 ```
-python unit_tests.py
+python unit_tests.py -m bcl_manager
 ......
 ----------------------------------------------------------------------
 Ran 6 tests in 0.022s
@@ -174,6 +174,7 @@ To reprocess the TB samples:
 2. Plan how jobs will be delegated to machines by adding a `job_id` column to the `batches.csv` file
 3. Configure the `launch.py` script
 4. Launch jobs on EC2 machines
+5. Concatenate summary csv files
 
 See below for details on how to perform each step. 
 
@@ -232,3 +233,9 @@ aws s3 cp --recursive s3://s3-csu-001/sequence-manager ./
 sudo bash launch.bash job_id
 ```
 - this will start a new screen session: once dependencies are installed and the first plate is running in Nextflow, detached from the screen (crtl+a d) and close the SSH session
+
+### (5) Concatenate summary csv files
+
+Each job machine will create a summary csv file which it appends to after each batch run. This is pushed to `s3://s3-csu-003/v3/summary/<job-id>.csv` at the end of the last batch. This CSV file contains relevant metadata for every sample's raw-reads and sequenced results including s3-uris for both. 
+
+When the last job machine has finished and all samples have been processed, the csv files for each job machine should be concatenated into a single csv file with a row for every sample that was processed. It will contain the following column names: sample_name, submission, project_code sequencer, run_id, well, read_1, read_2, lane, batch_id, reads_bucket, results_bucket results_prefix, sequenced_datetime, GenomeCov, MeanDepth, NumRawReads, pcMapped, Outcome, flag, group, CSSTested, matches, mismatches, noCoverage, anomalous.
