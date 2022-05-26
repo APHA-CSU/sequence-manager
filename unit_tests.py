@@ -145,9 +145,6 @@ class TestBclManager(unittest.TestCase):
 class TestSummary(unittest.TestCase):
     def test_extract_submission_no(self):
         # Test cases
-        # NOTE: only tests for removing preceeding AFxx from correctly formatted
-        # sample name. If the sample name is formattted incorectly, unexpected 
-        # behaviour may occur.
         test_input = ["AFxx-12-34567-89",
                       "ATxx-12-34567-89",
                       "AFx-12-34567-89",
