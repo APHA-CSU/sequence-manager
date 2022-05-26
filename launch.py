@@ -124,6 +124,7 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
         Appends to a summary csv file containing metadata for each sample including reads and results
         s3 URIs.
     """
+    # get reads metadata
     df_reads, _, _, _ = summary.bucket_summary(batch["bucket"], batch["prefix"])
     # download metadata for the batch from AssignedWGSCluster csv file
     results_path = glob.glob(f'{work_dir}/results/Results*')
@@ -134,13 +135,15 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
     df_results.insert(1, "results_bucket", "s3-csu-003")
     df_results.insert(2, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
     df_results.insert(3, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
-    # If summary file already exists locally - append to existing file
+    # join reads and results dataframes
+    df_joined = df_reads.join(df_results.set_index('Sample'), on='sample_name')
+    # if summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
-        df_summary = pd.concat([df_summary, df]).reset_index(drop=True)
+        df_summary = pd.concat([df_summary, df_joined]).reset_index(drop=True)
     # else create new
     else:
-        df_summary = df
+        df_summary = df_joined
     df_summary.to_csv(summary_filepath, index=False)
 
 def main(args):
