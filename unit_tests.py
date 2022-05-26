@@ -179,8 +179,6 @@ if __name__ == '__main__':
     bcl_manager_test = [TestBclManager('test_handler_construction'),
                         TestBclManager('test_on_create'),
                         TestBclManager('test_copy'),
-                        # TODO: need to work out how to add positional arguments
-                        TestBclManager('assertOnCreatedProcessing'),
                         TestBclManager('test_start'),
                         TestBclManager('test_convert_to_fastq'),
                         TestBclManager('test_upload')]
