@@ -125,7 +125,7 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
     df_results.insert(2, "results_prefix", os.path.join(results_prefix, results_path.split(os.path.sep)[-1]))
     df_results.insert(3, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
     # join reads and results dataframes
-    df_joined = df_reads.join(df_results.set_index('Sample'), on='sample_name')
+    df_joined = df_reads.join(df_results.set_index('Sample'), on='sample_name', how='outer')
     # if summary file already exists locally - append to existing file
     if os.path.exists(summary_filepath):
         df_summary = pd.read_csv(summary_filepath)
