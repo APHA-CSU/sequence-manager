@@ -81,10 +81,11 @@ def pair_files(keys):
 
         # Create Sample Object
         sample = {
+            "sample_name": match_1[3],
+            "submission": extract_submission_no(match_1[3]),
             "project_code": match_1[0],
             "sequencer": match_1[1] if match_1[1] else "UnknownSequencer",
             "run_id": match_1[2],
-            "name": match_1[3],
             "well": match_1[4],
             "read_1": key_1,
             "read_2": key_2,
@@ -141,12 +142,19 @@ def bucket_summary(bucket, prefixes):
     samples, batches, unpaired, not_parsed = pair_files(keys)
 
     # Include bucket name
-    samples["bucket"] = bucket
+    samples["reads_bucket"] = bucket
     batches["bucket"] = bucket
     unpaired["bucket"] = bucket
     not_parsed["bucket"] = bucket
 
     return samples, batches, unpaired, not_parsed
+
+def extract_submission_no(sample_name):
+    """ Extracts submision number from sample name using regex """
+    pattern = r'\d{2,2}-\d{4,5}-\d{2,2}'
+    matches = re.findall(pattern, sample_name)
+    submission_no = matches[0] if matches else sample_name
+    return submission_no
 
 def main():
     """ summarises the TB samples. Produces a number of csvs locally """
@@ -155,7 +163,7 @@ def main():
     samples_2, batches_2, unpaired_2, not_parsed_2 = bucket_summary('s3-csu-002', ['SB4020-TB/'])
 
     # Combine + csv output
-    pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv')
+    pd.concat([samples_1, samples_2], ignore_index=True).to_csv('samples.csv', index=False)
     pd.concat([batches_1, batches_2], ignore_index=True).to_csv('batches.csv')
     pd.concat([unpaired_1, unpaired_2], ignore_index=True).to_csv('unpaired.csv')
     pd.concat([not_parsed_1, not_parsed_2], ignore_index=True).to_csv('not_parsed.csv')
