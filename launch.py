@@ -18,12 +18,16 @@ import summary
 
 # TODO: set image to prod
 DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
-DEFAULT_RESULTS_BUCKET = "s3-csu-003"
-DEFAULT_RESULTS_S3_PATH = "v3"
+#DEFAULT_RESULTS_BUCKET = "s3-csu-003"
+DEFAULT_RESULTS_BUCKET = "s3-staging-area"
+#DEFAULT_RESULTS_S3_PATH = "v3"
+DEFAULT_RESULTS_S3_PATH = "nickpestell/v3"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
-DEFAULT_SUMMARY_PREFIX = "v3/summary" 
-LOGGING_BUCKET = "s3-csu-003"
-LOGGING_PREFIX = "logs"
+#DEFAULT_SUMMARY_PREFIX = "v3/summary" 
+DEFAULT_SUMMARY_PREFIX = "nickpestell/v3/summary" 
+#LOGGING_BUCKET = "s3-csu-003"
+LOGGING_BUCKET = "s3-staging-area"
+LOGGING_PREFIX = "nickpestell/logs"
 DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
 
 def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAULT_RESULTS_S3_PATH, 
@@ -33,7 +37,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
 
     # Download batches csv from S3
     logging.info(f"Downloading batches csv from {batches_uri}")
-    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
+#    subprocess.run(["aws", "s3", "cp", batches_uri, "./batches.csv"])
     batches = pd.read_csv('./batches.csv')
     batches = batches.loc[batches.job_id==job_id, :].reset_index(level=0)
 
@@ -47,11 +51,12 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
         reads_uri = os.path.join(f's3://{batch["bucket"]}', batch["prefix"])
         results_prefix = os.path.join(results_s3_path, batch["prefix"])
         results_uri = os.path.join(f's3://{results_bucket}', results_prefix)
+        run_id = batch["batch_id"]
 
         # temp directory ensures we don't get lots of data accumulating
         with tempfile.TemporaryDirectory() as temp_dirname:
             try:
-                run_pipeline_s3(reads_uri, results_uri, temp_dirname)
+                run_pipeline_s3(reads_uri, results_uri, temp_dirname, run_id)
                 append_summary(batch, results_prefix, summary_filepath, temp_dirname)
 
             except Exception as e:
@@ -67,7 +72,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
         logging.exception(e)
         raise e
 
-def run_pipeline_s3(reads_uri, results_uri, work_dir, image=DEFAULT_IMAGE):
+def run_pipeline_s3(reads_uri, results_uri, work_dir, run_id, image=DEFAULT_IMAGE):
     """ Run pipeline from S3 uris """
     
     # Validate input
@@ -87,21 +92,25 @@ def run_pipeline_s3(reads_uri, results_uri, work_dir, image=DEFAULT_IMAGE):
     # Download
     subprocess.run(["aws", "s3", "cp", "--recursive", reads_uri, temp_reads], check=True)
     
+    print("READS 1: ", temp_reads)
     # Run
-    run_pipeline(temp_reads, temp_results)
+    run_pipeline(temp_reads, temp_results, run_id)
     
     # Upload
     subprocess.run(["aws", "s3", "cp", "--recursive", temp_results, results_uri], check=True)
 
-def run_pipeline(reads, results, image=DEFAULT_IMAGE):
+def run_pipeline(reads, results, run_id, image=DEFAULT_IMAGE):
     """ Run the pipeline using docker """
 
     # docker requires absolute paths
     reads = os.path.abspath(reads)
     results = os.path.abspath(results)
+    
+    print("READS 2: ", reads)
 
     # pull and run
     subprocess.run(["sudo", "docker", "pull", image], check=True)
+    ps = subprocces.run(["nextflow", "run", "APHA-CSU/btb-seq", "-r", "prod", f'--reads="{reads_uri}*_{S*_R1,S*_R2}_*.fastq.gz' --outdir={results_uri}
     ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
                          "-v", f"{reads}:/reads/",
                          "-v", f"{results}:/results/",
@@ -118,7 +127,7 @@ def append_summary(batch, results_prefix, summary_filepath, work_dir):
     # download metadata for the batch from AssignedWGSCluster csv file
     results_path = glob.glob(f'{work_dir}/results/Results*')
     results_path = results_path[0]
-    assigned_wgs_cluster_path = glob.glob(f'{results_path}/*AssignedWGSCluster*.csv')
+    assigned_wgs_cluster_path = glob.glob(f'{results_path}/*FinalOut*.csv')
     df_results = pd.read_csv(assigned_wgs_cluster_path[0])
     # add columns for reads and results URIs
     df_results.insert(1, "results_bucket", "s3-csu-003")
