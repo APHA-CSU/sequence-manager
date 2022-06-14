@@ -57,7 +57,7 @@ def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAUL
         with tempfile.TemporaryDirectory() as temp_dirname:
             try:
                 run_pipeline_s3(reads_uri, results_uri, temp_dirname, run_id)
-                append_summary(batch, results_prefix, summary_filepath, temp_dirname)
+                #append_summary(batch, results_prefix, summary_filepath, temp_dirname)
 
             except Exception as e:
                 logging.exception(e)
@@ -89,33 +89,15 @@ def run_pipeline_s3(reads_uri, results_uri, work_dir, run_id, image=DEFAULT_IMAG
     os.makedirs(temp_reads)
     os.makedirs(temp_results)
 
-    # Download
-    subprocess.run(["aws", "s3", "cp", "--recursive", reads_uri, temp_reads], check=True)
-    
-    print("READS 1: ", temp_reads)
     # Run
-    run_pipeline(temp_reads, temp_results, run_id)
-    
-    # Upload
-    subprocess.run(["aws", "s3", "cp", "--recursive", temp_results, results_uri], check=True)
+    run_pipeline(reads_uri, results_uri, run_id)
 
-def run_pipeline(reads, results, run_id, image=DEFAULT_IMAGE):
+def run_pipeline(reads_uri, results_uri, run_id):
     """ Run the pipeline using docker """
 
-    # docker requires absolute paths
-    reads = os.path.abspath(reads)
-    results = os.path.abspath(results)
-    
-    print("READS 2: ", reads)
-
     # pull and run
-    subprocess.run(["sudo", "docker", "pull", image], check=True)
-    ps = subprocces.run(["nextflow", "run", "APHA-CSU/btb-seq", "-r", "prod", f'--reads="{reads_uri}*_{S*_R1,S*_R2}_*.fastq.gz' --outdir={results_uri}
-    ps = subprocess.run(["sudo", "docker", "run", "--rm", "-it",
-                         "-v", f"{reads}:/reads/",
-                         "-v", f"{results}:/results/",
-                         image, "bash", "./btb-seq", "/reads/", "/results/",], 
-                         check=True)
+    cmd = f'nextflow run APHA-CSU/btb-seq -with-docker aphacsubot/btb-seq -r prod --reads="{reads_uri}*_{{S*_R1,S*_R2}}_*.fastq.gz" --outdir="{results_uri}"'
+    ps = subprocess.run(cmd, shell=True, check=True)
 
 def append_summary(batch, results_prefix, summary_filepath, work_dir):
     """
