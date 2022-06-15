@@ -13,6 +13,7 @@ import pandas as pd
 
 from s3_logging_handler import S3LoggingHandler
 import summary
+import utils
 
 # Launch and manage jobs for the TB reprocess
 
@@ -21,14 +22,26 @@ DEFAULT_IMAGE = "aphacsubot/btb-seq:master"
 #DEFAULT_RESULTS_BUCKET = "s3-csu-003"
 DEFAULT_RESULTS_BUCKET = "s3-staging-area"
 #DEFAULT_RESULTS_S3_PATH = "v3"
-DEFAULT_RESULTS_S3_PATH = "nickpestell/v3"
+DEFAULT_RESULTS_S3_PATH = "nickpestell/v8"
 DEFAULT_BATCHES_URI = "s3://s3-csu-001/config/batches.csv"
 #DEFAULT_SUMMARY_PREFIX = "v3/summary" 
-DEFAULT_SUMMARY_PREFIX = "nickpestell/v3/summary" 
+DEFAULT_SUMMARY_PREFIX = "nickpestell/v8/summary" 
 #LOGGING_BUCKET = "s3-csu-003"
 LOGGING_BUCKET = "s3-staging-area"
 LOGGING_PREFIX = "nickpestell/logs"
 DEFAULT_SUMMARY_FILEPATH = os.path.join(os.getcwd(), "summary.csv")
+
+def s3_download_file(bucket, key, dest):
+    """
+        Downloads s3 folder at the key-bucket pair (strings) to dest 
+        path (string)
+    """
+    if s3_object_exists(bucket, key):
+        s3 = boto3.client('s3')
+        s3.download_file(bucket, key, dest)
+    else:
+        raise NoS3ObjectError(bucket, key)
+
 
 def launch(job_id, results_bucket=DEFAULT_RESULTS_BUCKET, results_s3_path=DEFAULT_RESULTS_S3_PATH, 
            batches_uri=DEFAULT_BATCHES_URI, summary_prefix=DEFAULT_SUMMARY_PREFIX, 
@@ -89,7 +102,7 @@ def run_pipeline(reads_uri, results_uri, run_id):
     """ Run the pipeline using docker """
 
     # pull and run
-    cmd = f'nextflow run APHA-CSU/btb-seq -with-docker aphacsubot/btb-seq -r prod --reads="{reads_uri}*_{{S*_R1,S*_R2}}_*.fastq.gz" --outdir="{results_uri}"'
+    cmd = f'nextflow run APHA-CSU/btb-seq -with-docker aphacsubot/btb-seq -r master --reads="{reads_uri}*_{{S*_R1,S*_R2}}_*.fastq.gz" --outdir="{results_uri}"'
     ps = subprocess.run(cmd, shell=True, check=True)
 
 def append_summary(batch, results_prefix, summary_filepath, results_uri):#work_dir):
@@ -100,16 +113,21 @@ def append_summary(batch, results_prefix, summary_filepath, results_uri):#work_d
     # get reads metadata
     df_reads, _, _, _ = summary.bucket_summary(batch["bucket"], [batch["prefix"]])
     # download metadata for the batch from AssignedWGSCluster csv file
-    with tempfile.TemporaryDirectory() as temp_dirname:
-        print(batch["batch_id"])
-        subprocess.run(["aws", "s3", "cp", "--recursive", "--exclude", '"*"', "--include", f'"{batch["batch_id"]}_FinalOut*.csv"', f'{results_uri}', temp_dirname], check=True)
-        final_out_path = glob.glob(f"{temp_dirname}/Results_*/*FinalOut*.csv")
-        print("FINAL OUT PATH: ", final_out_path)
-        print("BLAR: ", final_out_path[0].split("/")[2])
-        df_results = pd.read_csv(final_out_path[0], comment="#")
+    #with tempfile.TemporaryDirectory() as temp_dirname:
+    temp_file = f"/home/nickpestell/tmp/test{batch['batch_id']}/out.csv"
+    cmd =  f"aws s3 ls --recursive {results_uri}/Results_{batch['batch_id']}_ | grep -e 'FinalOut'"
+    ps = subprocess.run(cmd, shell=True, 
+                        check=True, capture_output=True)
+    final_out_path = ps.stdout.decode().strip('\n').split(' ')[-1]
+    utils.s3_download_file(DEFAULT_RESULTS_BUCKET, final_out_path, temp_file, endpoint_url=None)
+    df_results = pd.read_csv(temp_file, comment="#")
     # add columns for reads and results URIs
+    cmd =  f"aws s3 ls {results_uri}/Results_{batch['batch_id']}_"
+    ps = subprocess.run(cmd, shell=True, 
+                        check=True, capture_output=True)
+    results_prefix = os.path.join(results_prefix, ps.stdout.decode().strip('\n').split(' ')[-1])
     df_results.insert(1, "results_bucket", "s3-csu-003")
-    df_results.insert(2, "results_prefix", os.path.join(results_prefix))#, results_path.split(os.path.sep)[-1]))
+    df_results.insert(2, "results_prefix", results_prefix)#, results_path.split(os.path.sep)[-1]))
     df_results.insert(3, "sequenced_datetime", time.strftime("%d-%m-%y %H:%M:%S"))
     # join reads and results dataframes
     df_joined = df_reads.join(df_results.set_index('Sample'), on='sample_name', how='outer')
