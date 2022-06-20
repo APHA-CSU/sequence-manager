@@ -62,3 +62,15 @@ def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
+
+def s3_download_file(bucket, key, dest, endpoint_url):
+    """
+        Downloads s3 folder at the key-bucket pair (strings) to dest 
+        path (string)
+    """
+    if s3_object_exists(bucket, key, endpoint_url):
+        s3 = boto3.client('s3')
+        s3.download_file(bucket, key, dest)
+    else:
+        raise Exception(f'{key} not found in {bucket}') 
+

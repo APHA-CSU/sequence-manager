@@ -13,7 +13,8 @@ sudo apt-get -y install python3 \
     			ca-certificates \
 	        	curl \
 		    	gnupg \
-		        lsb-release
+		        lsb-release \
+			openjdk-11-jdk
 
 
 # docker
@@ -25,8 +26,14 @@ sudo apt-get -y install docker-ce \
 			docker-ce-cli \
 			containerd.io \
 			docker-compose-plugin
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
 
 # python 
 pip3 install biopython numpy pandas gitpython boto3
 pip3 install --upgrade awscli
+
+# nextflow
+curl -s https://get.nextflow.io | bash
 
