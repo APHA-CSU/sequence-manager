@@ -28,6 +28,7 @@ sudo apt-get -y install docker-ce \
 			docker-compose-plugin
 sudo groupadd docker
 sudo usermod -aG docker $USER
+newgrp docker
 
 # python 
 pip3 install biopython numpy pandas gitpython boto3
