@@ -11,12 +11,12 @@ set -eo pipefail
 # apt
 sudo apt update -y && sudo apt upgrade -y
 sudo apt -y install \
-	python3 \
-	python3-pip \
+	#python3 \
+	#python3-pip \
     ca-certificates \
-	curl \
-	gnupg \
-	lsb-release \
+	#curl \
+	#gnupg \
+	#lsb-release \
 	openjdk-11-jdk
 
 
@@ -34,8 +34,8 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # python 
-sudo pip3 install biopython numpy pandas gitpython boto3
-sudo pip3 install --upgrade awscli
+#sudo pip3 install biopython numpy pandas gitpython boto3
+#sudo pip3 install --upgrade awscli
 
 # nextflow
 curl -s https://get.nextflow.io | bash
