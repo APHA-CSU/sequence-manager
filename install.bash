@@ -31,8 +31,8 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # python 
-pip3 install biopython numpy pandas gitpython boto3
-pip3 install --upgrade awscli
+sudo pip3 install biopython numpy pandas gitpython boto3
+sudo pip3 install --upgrade awscli
 
 # nextflow
 curl -s https://get.nextflow.io | bash
