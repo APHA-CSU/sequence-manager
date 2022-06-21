@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -eo pipefail
 
 #================================================================
@@ -7,14 +9,15 @@ set -eo pipefail
 #%    Install dependancies for a job for the TB reprocess
 
 # apt
-sudo apt-get update
-sudo apt-get -y install python3 \
-			python3-pip \
-    			ca-certificates \
-	        	curl \
-		    	gnupg \
-		        lsb-release \
-			openjdk-11-jdk
+sudo apt update -y && sudo apt upgrade -y
+sudo apt -y install \
+	python3 \
+	python3-pip \
+    ca-certificates \
+	curl \
+	gnupg \
+	lsb-release \
+	openjdk-11-jdk
 
 
 # docker
@@ -36,4 +39,6 @@ sudo pip3 install --upgrade awscli
 
 # nextflow
 curl -s https://get.nextflow.io | bash
+sudo mv nextflow /usr/local/bin
+
 
