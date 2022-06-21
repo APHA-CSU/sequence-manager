@@ -11,12 +11,7 @@ set -eo pipefail
 # apt
 sudo apt update -y && sudo apt upgrade -y
 sudo apt -y install \
-	#python3 \
-	#python3-pip \
-    ca-certificates \
-	#curl \
-	#gnupg \
-	#lsb-release \
+	ca-certificates \
 	openjdk-11-jdk
 
 
