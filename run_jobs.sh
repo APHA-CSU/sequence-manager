@@ -9,7 +9,7 @@ resultsfolder=$4
 jobsToRun=$5
 
 # install dependancies
-sudo install.bash
+sudo bash install.bash
 
 # Get batch/job sheet
 
