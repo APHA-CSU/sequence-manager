@@ -26,11 +26,6 @@ sudo apt-get -y install docker-ce \
 			docker-compose-plugin
 sudo groupadd -f docker
 sudo usermod -aG docker $USER
-newgrp docker
-
-# python 
-#sudo pip3 install biopython numpy pandas gitpython boto3
-#sudo pip3 install --upgrade awscli
 
 # nextflow
 curl -s https://get.nextflow.io | bash
