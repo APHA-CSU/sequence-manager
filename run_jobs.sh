@@ -8,8 +8,6 @@ resultsbucket=$3
 resultsfolder=$4
 jobsToRun=$5
 
-screen
-
 # Get batch/job sheet
 mkdir reprocess
 aws s3 cp "$databucket"/reprocess/"$jobsheet" reprocess/"$jobsheet"
@@ -19,12 +17,11 @@ aws s3 cp "$databucket"/reprocess/"$jobsheet" reprocess/"$jobsheet"
 batchesToRun=$(awk -F, -v subset=$jobsToRun '$9 == subset' reprocess/"$jobsheet")
 echo "$batchesToRun" > batchesToRun.txt
 
-# process each selected batch using nextflow
-file=batchesToRun.txt
-
 echo -e "\tNow processing batches of samples with btb-seq..."
 echo -e "\tInstance will shutdown when complete"
 
+# process each selected batch using nextflow
+file=batchesToRun.txt
 while IFS=, read -r num batch_id sequencer run_id project_code num_samples prefix bucket job_id;
 do
     echo "Running $bucket/$prefix" >> $HOSTNAME.log
