@@ -41,7 +41,7 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
     # Sync
     return_code = subprocess.run([
         "aws", "s3", 
-        "--endpoint-url", s3_endpoint_url,
+        #"--endpoint-url", s3_endpoint_url,
         "sync", src_dir, target_uri
     ]).returncode
 
@@ -58,7 +58,7 @@ def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
         endpoint_url: S3 endpoint url
         indent: Number of indentation spaces in the json
     """
-    s3 = boto3.resource('s3', endpoint_url=endpoint_url)
+    s3 = boto3.resource('s3')#, endpoint_url=endpoint_url)
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))

@@ -1,5 +1,3 @@
-import sys
-import time
 import logging
 import ntpath
 import argparse
@@ -13,11 +11,15 @@ import glob
 from datetime import datetime
 
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler
 
 from s3_logging_handler import S3LoggingHandler
 
 import utils
+from csubatch.csu_batch import csuBatch
+
+# for testing batch on csu-004
+from unittest import mock
 
 """
 bcl_manager.py is a file-watcher that runs on wey-001 for automated:
@@ -27,6 +29,9 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 - Upload of .fastq files to S3 according to project code
 
 """
+
+SALMONELLA_PROJECT_CODES = ["FZ200"]
+BTB_PROJECT_CODES = ["SB4020", "SB4020-TB", "SB4030", "SB4030-TB", "SB4300", "SB4300-TB"]
 
 
 def convert_to_fastq(src_dir, dest_dir):
@@ -154,6 +159,10 @@ class BclEventHandler(FileSystemEventHandler):
         self.fastq_key = fastq_key
         self.s3_endpoint_url = s3_endpoint_url
 
+        # Instantiate batch objects
+        self.btb_batch = csuBatch(job_definition_name="btb-seq-job-def", vcpus="4", memory="8192")
+        self.salmonella_batch = csuBatch(job_definition_name="sal-seq-job-def", vcpus="4", memory="8192")
+
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
             raise Exception("Backup Directory does not exist: %s" % self.backup_dir)
@@ -189,6 +198,50 @@ class BclEventHandler(FileSystemEventHandler):
 
         # TODO: Remove old plates     
 
+    def run_batch_pipelines(self, src_path, prefix):
+        """
+            Runs btb and salmonella pipelines in aws batch
+        """
+        # Get run number of the plate
+        # TODO - dry
+        abs_src_path = os.path.dirname(os.path.abspath(src_path)) + '/'
+        src_name = basename(abs_src_path[:-1])
+
+        fastq_path = self.fastq_dir + src_name + '/'
+
+        src_path = os.path.join(fastq_path, '')
+        prefix = os.path.join(prefix, '')
+
+        # Extract metadata
+        # TODO - dry
+        match = re.search(r'(.+)_((.+)_(.+))_(.+)', basename(os.path.dirname(src_path)))
+
+        if not match:
+            raise Exception(f'Could not extract run number from {src_path}')
+
+        run_id = match.group(2)
+
+        # Upload each directory that contains fastq files
+        for dirname in glob.glob(src_path + '*/'):
+            # Skip if no fastq.gz in the directory
+            if not glob.glob(dirname + '*.fastq.gz'):
+                continue        
+
+            # S3 source
+            project_code = basename(os.path.dirname(dirname))
+            reads_key = f'{prefix}{project_code}/{run_id}'
+
+            # S3 target
+
+            if project_code in BTB_PROJECT_CODES:
+                # S3 target
+                results_bucket = "s3-staging-area"
+                self.btb_batch.submit_job(name="btb-seq-test-job", reads_key=reads_key,
+                                          results_key="v3-2/btb", results_bucket=results_bucket)
+            elif project_code in SALMONELLA_PROJECT_CODES:
+                self.salmonella_batch.submit_job(name="salm-seq-test-job", reads_key=reads_key,
+                                                 results_key="v3-2/salmonella", results_bucket=results_bucket)
+
     def on_created(self, event):
         """Called when a file or directory is created.
 
@@ -208,6 +261,7 @@ class BclEventHandler(FileSystemEventHandler):
         try:
             logging.info('Processing new plate: %s' % event.src_path)
             self.process_bcl_plate(event.src_path)
+            self.run_batch_pipelines(event.src_path)
 
         except Exception as e:
             logging.exception(e)
@@ -266,14 +320,15 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
 
 if __name__ == "__main__":
     # Parse
+    # change defaults for testing batch on csu-004
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='/Illumina/IncomingRuns/', help='Watch directory')
-    parser.add_argument('--backup-dir', default='/Illumina/OutputFastq/BclRuns/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='/Illumina/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
-    parser.add_argument('--s3-log-bucket', default='s3-csu-001', help='S3 Bucket to upload log file')
-    parser.add_argument('--s3-log-key', default='logs/bcl-manager.log', help='S3 Key to upload log file')
-    parser.add_argument('--s3-fastq-bucket', default='s3-csu-001', help='S3 Bucket to upload fastq files')
-    parser.add_argument('--s3-fastq-key', default='', help='S3 Key to upload fastq data')
+    parser.add_argument('dir', nargs='?', default='/home/nickpestell/batch/watch-dir/', help='Watch directory')
+    parser.add_argument('--backup-dir', default='/home/nickpestell/batch/BclRuns/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='/home/nickpestell/batch/FastqRuns/', help='Where to put converted fastq data')
+    parser.add_argument('--s3-log-bucket', default='s3-staging-area', help='S3 Bucket to upload log file')
+    parser.add_argument('--s3-log-key', default='nickpestell/logs/bcl-manager.log', help='S3 Key to upload log file')
+    parser.add_argument('--s3-fastq-bucket', default='s3-staging-area', help='S3 Bucket to upload fastq files')
+    parser.add_argument('--s3-fastq-key', default='nickpestell/fastq/', help='S3 Key to upload fastq data')
     parser.add_argument('--s3-endpoint-url', default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com', help='aws s3 endpoint url')
 
     args = parser.parse_args()
@@ -290,11 +345,13 @@ if __name__ == "__main__":
     )
 
     # Run
-    start(
-        args.dir, 
-        args.backup_dir, 
-        args.fastq_dir,
-        args.s3_fastq_bucket,
-        args.s3_fastq_key,
-        args.s3_endpoint_url
-    )
+
+    with mock.patch("bcl_manager.convert_to_fastq"):
+        start(
+            args.dir, 
+            args.backup_dir, 
+            args.fastq_dir,
+            args.s3_fastq_bucket,
+            args.s3_fastq_key,
+            args.s3_endpoint_url
+        )
