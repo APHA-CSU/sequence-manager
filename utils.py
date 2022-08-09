@@ -12,7 +12,7 @@ def s3_object_exists(bucket, key, endpoint_url):
     
     key_exists = True
 
-    s3 = boto3.resource('s3', endpoint_url=endpoint_url)
+    s3 = boto3.resource('s3')#, endpoint_url=endpoint_url)
 
     try:
         s3.Object(bucket, key).load()
@@ -42,7 +42,8 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
     return_code = subprocess.run([
         "aws", "s3", 
         #"--endpoint-url", s3_endpoint_url,
-        "sync", src_dir, target_uri
+        "sync", "--acl", "bucket-owner-full-control", 
+        src_dir, target_uri
     ]).returncode
 
     if return_code:

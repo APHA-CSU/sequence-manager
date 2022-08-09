@@ -18,9 +18,6 @@ from s3_logging_handler import S3LoggingHandler
 import utils
 from csubatch.csu_batch import csuBatch
 
-# for testing batch on csu-004
-from unittest import mock
-
 """
 bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
@@ -30,7 +27,7 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
 """
 
-SALMONELLA_PROJECT_CODES = ["FZ200"]
+SALMONELLA_PROJECT_CODES = ["FZ2000"]
 BTB_PROJECT_CODES = ["SB4020", "SB4020-TB", "SB4030", "SB4030-TB", "SB4300", "SB4300-TB"]
 
 
@@ -191,7 +188,7 @@ class BclEventHandler(FileSystemEventHandler):
         copy(abs_src_path, backup_path)
 
         logging.info(f'Converting to fastq: {fastq_path}')
-        convert_to_fastq(abs_src_path, fastq_path)
+        #convert_to_fastq(abs_src_path, fastq_path)
         
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
@@ -202,6 +199,7 @@ class BclEventHandler(FileSystemEventHandler):
         """
             Runs btb and salmonella pipelines in aws batch
         """
+        results_bucket = "s3-staging-area"
         # Get run number of the plate
         # TODO - dry
         abs_src_path = os.path.dirname(os.path.abspath(src_path)) + '/'
@@ -231,16 +229,14 @@ class BclEventHandler(FileSystemEventHandler):
             project_code = basename(os.path.dirname(dirname))
             reads_key = f'{prefix}{project_code}/{run_id}'
 
-            # S3 target
-
             if project_code in BTB_PROJECT_CODES:
-                # S3 target
-                results_bucket = "s3-staging-area"
                 self.btb_batch.submit_job(name="btb-seq-test-job", reads_key=reads_key,
-                                          results_key="v3-2/btb", results_bucket=results_bucket)
+                                          results_key="v3-2/btb", reads_bucket=self.fastq_bucket, 
+                                          results_bucket=results_bucket)
             elif project_code in SALMONELLA_PROJECT_CODES:
                 self.salmonella_batch.submit_job(name="salm-seq-test-job", reads_key=reads_key,
-                                                 results_key="v3-2/salmonella", results_bucket=results_bucket)
+                                                 results_key="v3-2/salmonella", reads_bucket=self.fastq_bucket,
+                                                 results_bucket=results_bucket)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -261,7 +257,7 @@ class BclEventHandler(FileSystemEventHandler):
         try:
             logging.info('Processing new plate: %s' % event.src_path)
             self.process_bcl_plate(event.src_path)
-            self.run_batch_pipelines(event.src_path)
+            self.run_batch_pipelines(event.src_path, self.fastq_key)
 
         except Exception as e:
             logging.exception(e)
@@ -322,9 +318,9 @@ if __name__ == "__main__":
     # Parse
     # change defaults for testing batch on csu-004
     parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='/home/nickpestell/batch/watch-dir/', help='Watch directory')
-    parser.add_argument('--backup-dir', default='/home/nickpestell/batch/BclRuns/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='/home/nickpestell/batch/FastqRuns/', help='Where to put converted fastq data')
+    parser.add_argument('dir', nargs='?', default='/home/nickpestell/batch/IncomingRuns/', help='Watch directory')
+    parser.add_argument('--backup-dir', default='/home/nickpestell/batch/OutputFastq/BclRuns/', help='Where to backup data to')
+    parser.add_argument('--fastq-dir', default='/home/nickpestell/batch/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
     parser.add_argument('--s3-log-bucket', default='s3-staging-area', help='S3 Bucket to upload log file')
     parser.add_argument('--s3-log-key', default='nickpestell/logs/bcl-manager.log', help='S3 Key to upload log file')
     parser.add_argument('--s3-fastq-bucket', default='s3-staging-area', help='S3 Bucket to upload fastq files')
@@ -346,12 +342,11 @@ if __name__ == "__main__":
 
     # Run
 
-    with mock.patch("bcl_manager.convert_to_fastq"):
-        start(
-            args.dir, 
-            args.backup_dir, 
-            args.fastq_dir,
-            args.s3_fastq_bucket,
-            args.s3_fastq_key,
-            args.s3_endpoint_url
-        )
+    start(
+        args.dir, 
+        args.backup_dir, 
+        args.fastq_dir,
+        args.s3_fastq_bucket,
+        args.s3_fastq_key,
+        args.s3_endpoint_url
+    )

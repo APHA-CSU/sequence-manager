@@ -21,7 +21,7 @@ class S3LoggingHandler(FileHandler):
         if endpoint_url is None:
             self.s3 = boto3.client("s3")
         else:
-            self.s3 = boto3.client("s3", endpoint_url=endpoint_url)
+            self.s3 = boto3.client("s3")#, endpoint_url=endpoint_url)
             
 
     def emit(self, record):
