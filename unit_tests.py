@@ -1,13 +1,9 @@
 import unittest
 import unittest.mock
 from unittest.mock import Mock, MagicMock
-import argparse
-import sys
-import errno
 
 import watchdog
 import bcl_manager
-import launch
 from bcl_manager import SubdirectoryException
 
 class TestBclManager(unittest.TestCase):
@@ -142,108 +138,5 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
-class TestSummary(unittest.TestCase):
-    def test_extract_submission_no(self):
-        # Test cases
-        test_input = ["AFxx-12-34567-89",
-                      "ATxx-12-34567-89",
-                      "AFx-12-34567-89",
-                      "Ax-12-34567-89",
-                      "AF-12-34567-89",
-                      "AFx12-34567-89",
-                      "HI-12-34567-89",
-                      "12-34567-89-1L",
-                      "12-34567-89-L1",
-                      "A-12-34567-89",
-                      "12-34567-89-1",
-                      "12-34567-89-L",
-                      "12-34567-89",
-                      "AFxx-12-3456-89",
-                      "ATxx-12-3456-89",
-                      "AFx-12-3456-89",
-                      "Ax-12-3456-89",
-                      "AF-12-3456-89",
-                      "AFx12-3456-89",
-                      "HI-12-3456-89",
-                      "12-3456-89-1L",
-                      "12-3456-89-L1",
-                      "A-12-3456-89",
-                      "12-3456-89-1",
-                      "12-3456-89-L",
-                      "12-3456-89",
-                      "12345678",
-                      "ABCDEFGH",
-                      ""]
-        test_output = ["12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-34567-89",
-                       "12-3456-89",
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12-3456-89", 
-                       "12345678", 
-                       "ABCDEFGH", 
-                       ""] 
-        fail = False 
-        i = 0
-        for input, output in zip(test_input, test_output):
-            try:
-                self.assertEqual(launch.extract_submission_no(input), output)
-            except AssertionError as e:
-                i += 1
-                fail = True
-                print(f"Test failure {i}: ", e)
-        if fail: 
-            print(f"{i} test failures")
-            raise AssertionError
-
-def test_suit(test_objs):
-    suit = unittest.TestSuite(test_objs)
-    return suit
-
 if __name__ == '__main__':
-    bcl_manager_test = [TestBclManager('test_handler_construction'),
-                        TestBclManager('test_on_create'),
-                        TestBclManager('test_copy'),
-                        TestBclManager('test_start'),
-                        TestBclManager('test_convert_to_fastq'),
-                        TestBclManager('test_upload')]
-    summary_test = [TestSummary('test_extract_submission_no')]
-    runner = unittest.TextTestRunner()
-    parser = argparse.ArgumentParser(description='Test code')
-    module_arg = parser.add_argument('--module', '-m', nargs=1, 
-                                     help="module to test: 'bcl_manager' or 'summary'",
-                                     default=None)
-    args = parser.parse_args()
-    try:
-        if args.module:
-            if args.module[0] == 'bcl_manager':
-                runner.run(test_suit(bcl_manager_test)) 
-            elif args.module[0] == 'summary':
-                runner.run(test_suit(summary_test)) 
-            else:
-                raise argparse.ArgumentError(module_arg, "Invalid argument. Please use 'forward', 'reverse' or 'interface'")
-        else:
-            unittest.main()
-    except argparse.ArgumentError as e:
-        print(e)
-        sys.exit(errno.ENOENT)
+    unittest.main()
