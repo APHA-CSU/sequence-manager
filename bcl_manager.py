@@ -113,13 +113,17 @@ def upload(src_path, bucket, prefix, s3_endpoint_url):
             "upload_time": str(datetime.now())
         })
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
+
+def monitor_disk_usage(filepath):
+    total, used, free = shutil.disk_usage(filepath)
+    return (total, free)
         
 
 def log_disk_usage(filepath):
     """
         Logs the level of free space in gb for the fileystem the filepath is mounted on
     """
-    total, used, free = shutil.disk_usage(filepath)
+    total, free = monitor_disk_usage(filepath)
     free_gb = free / 1024**3
 
     logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
@@ -130,6 +134,7 @@ class BclEventHandler(FileSystemEventHandler):
     """
 
     def __init__(self, 
+        watch_dir,
         backup_dir, 
         fastq_dir, 
         fastq_bucket, 
@@ -142,6 +147,9 @@ class BclEventHandler(FileSystemEventHandler):
         # Creation of this file indicates that an Illumina Machine has finished transferring
         # a plate of raw bcl reads
         self.copy_complete_filename = copy_complete_filename
+
+        # Directory to watch for new incoming bcl data
+        self.watch_dir = watch_dir + os.path.join('')
 
         # Raw Bcl Data backed up here (one dir for each plate)
         self.backup_dir = backup_dir + os.path.join('')
@@ -165,6 +173,20 @@ class BclEventHandler(FileSystemEventHandler):
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)
 
+    def remove_old_plates(filepath):
+        """
+            Removes oldest files within the filepath until filesystem the filepath
+            is mounted on has > 50% free space.
+        """
+        while True:
+            total, free = monitor_disk_usage(filepath)
+            if free / total < 0.5:
+                oldest = min(os.listdir(filepath), 
+                            key=lambda p: os.path.getctime(os.path.join(filepath, p)))
+                shutil.rmtree(os.path.join(filepath, oldest))
+            else:
+                break
+
     def process_bcl_plate(self, src_path):
         """
             Processes a bcl plate.
@@ -187,7 +209,10 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
-        # TODO: Remove old plates     
+        # remove old plates if filesystem has > 50% space. 
+        self.remove_old_plates(self.watch_dir)
+        self.remove_old_plates(self.backup_dir)
+        self.remove_old_plates(self.fastq_dir)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -246,7 +271,7 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
+    handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
