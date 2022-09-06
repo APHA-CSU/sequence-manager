@@ -1,6 +1,6 @@
 import unittest
 import unittest.mock
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 
 import watchdog
 import bcl_manager
@@ -137,6 +137,13 @@ class TestBclManager(unittest.TestCase):
         # Raises error if src_path is incorrectly formatted
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
+
+    def test_remove_old_plates(self):
+        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
+            # make a tempdir with some folders inside created sequentially
+            # call bcl_manager.remove_old_plates() and ensure that shutil.remtree was called the correct number of times
+            # should perhaps consider mocking out all the IO functions - don't know.
 
 if __name__ == '__main__':
     unittest.main()
