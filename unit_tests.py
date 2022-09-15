@@ -1,15 +1,27 @@
 import unittest
 import unittest.mock
 from unittest.mock import Mock, MagicMock, patch
+import os
+import tempfile
+import shutil
+
+from pyfakefs import fake_filesystem_unittest
 
 import watchdog
 import bcl_manager
 from bcl_manager import SubdirectoryException
 
-class TestBclManager(unittest.TestCase):
+class TestBclManager(fake_filesystem_unittest.TestCase):
+    def setUp(self):
+        #self.setUpPyfakefs()
+        pass
+
+    def tearDown(self):
+        pass
+
     def test_handler_construction(self):
         # Succeeds when output directories exist
-        bcl_manager.BclEventHandler('./', './', '', '', '')
+        bcl_manager.BclEventHandler('./', './', './', '', '', '')
 
         # Raises exceptions when output directories do not exist 
         with self.assertRaises(Exception):
@@ -31,7 +43,7 @@ class TestBclManager(unittest.TestCase):
         bcl_manager.shutil.disk_usage.return_value = (0,0,0)
 
         # Test handler
-        handler = bcl_manager.BclEventHandler('./', './', '', '', '')
+        handler = bcl_manager.BclEventHandler('./', './', './', '', '', '')
 
         # Mocking process_bcl_plate allows us to test on_create without actually doing any processing
         handler.process_bcl_plate = Mock()
@@ -138,11 +150,38 @@ class TestBclManager(unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
-    def test_remove_old_plates(self):
-        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
-            # make a tempdir with some folders inside created sequentially
-            # call bcl_manager.remove_old_plates() and ensure that shutil.remtree was called the correct number of times
+    @patch("bcl_manager.monitor_disk_usage")
+    def test_remove_old_plates(self, mock_monitor_disk_usage):
+        bcl_manager.shutil.rmtree = Mock(wraps=shutil.rmtree)
+        mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
+        with tempfile.TemporaryDirectory() as temp_filesystem:
+            os.mkdir(os.path.join(temp_filesystem, "a"))
+            os.mkdir(os.path.join(temp_filesystem, "b"))
+            os.mkdir(os.path.join(temp_filesystem, "c"))
+            os.mkdir(os.path.join(temp_filesystem, "d"))
+            os.mkdir(os.path.join(temp_filesystem, "e"))
+            os.mkdir(os.path.join(temp_filesystem, "f"))
+            #with open(os.path.join(temp_filesystem, "a"), "w") as _:
+                #pass
+            #with open(os.path.join(temp_filesystem, "b"), "w") as _:
+                #pass
+            #with open(os.path.join(temp_filesystem, "c"), "w") as _:
+                #pass
+            #with open(os.path.join(temp_filesystem, "d"), "w") as _:
+                #pass
+            #with open(os.path.join(temp_filesystem, "e"), "w") as _:
+                #pass
+            #with open(os.path.join(temp_filesystem, "f"), "w") as _:
+                #pass
+            bcl_manager.remove_old_plates(temp_filesystem)
+        calls = [unittest.mock.call(os.path.join(temp_filesystem, "a")),
+                 unittest.mock.call(os.path.join(temp_filesystem, "b")),
+                 unittest.mock.call(os.path.join(temp_filesystem, "c"))]
+        bcl_manager.shutil.rmtree.assert_has_calls(calls)
+
+
+
+            # call bcl_manager.remove_old_plates() and ensure that shutil.rmtree was called the correct number of times
             # should perhaps consider mocking out all the IO functions - don't know.
 
 if __name__ == '__main__':

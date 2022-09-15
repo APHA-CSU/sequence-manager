@@ -118,7 +118,6 @@ def monitor_disk_usage(filepath):
     total, used, free = shutil.disk_usage(filepath)
     return (total, free)
         
-
 def log_disk_usage(filepath):
     """
         Logs the level of free space in gb for the fileystem the filepath is mounted on
@@ -127,6 +126,20 @@ def log_disk_usage(filepath):
     free_gb = free / 1024**3
 
     logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
+
+def remove_old_plates(filepath):
+    """
+        Removes oldest files within the filepath until filesystem the filepath
+        is mounted on has > 50% free space.
+    """
+    while True:
+        total, free = monitor_disk_usage(filepath)
+        if free / total < 0.5:
+            oldest = min(os.listdir(filepath), 
+                            key=lambda p: os.path.getctime(os.path.join(filepath, p)))
+            shutil.rmtree(os.path.join(filepath, oldest))
+        else:
+            break
 
 class BclEventHandler(FileSystemEventHandler):
     """
@@ -173,19 +186,6 @@ class BclEventHandler(FileSystemEventHandler):
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)
 
-    def remove_old_plates(filepath):
-        """
-            Removes oldest files within the filepath until filesystem the filepath
-            is mounted on has > 50% free space.
-        """
-        while True:
-            total, free = monitor_disk_usage(filepath)
-            if free / total < 0.5:
-                oldest = min(os.listdir(filepath), 
-                            key=lambda p: os.path.getctime(os.path.join(filepath, p)))
-                shutil.rmtree(os.path.join(filepath, oldest))
-            else:
-                break
 
     def process_bcl_plate(self, src_path):
         """
@@ -210,9 +210,9 @@ class BclEventHandler(FileSystemEventHandler):
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
         # remove old plates if filesystem has > 50% space. 
-        self.remove_old_plates(self.watch_dir)
-        self.remove_old_plates(self.backup_dir)
-        self.remove_old_plates(self.fastq_dir)
+        remove_old_plates(self.watch_dir)
+        remove_old_plates(self.backup_dir)
+        remove_old_plates(self.fastq_dir)
 
     def on_created(self, event):
         """Called when a file or directory is created.
