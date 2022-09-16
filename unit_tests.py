@@ -1,6 +1,7 @@
 import unittest
 import unittest.mock
 from unittest.mock import Mock, MagicMock, patch
+import time
 import os
 import tempfile
 import shutil
@@ -167,12 +168,17 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
         # use a temporary directory as a mock filesystem
         with tempfile.TemporaryDirectory() as temp_filesystem:
-            # make directories sequentially - mock plates
+            # make directories sequentially (mock plates)
             os.mkdir(os.path.join(temp_filesystem, "plate_1"))
+            time.sleep(0.1)
             os.mkdir(os.path.join(temp_filesystem, "plate_2"))
+            time.sleep(0.1)
             os.mkdir(os.path.join(temp_filesystem, "plate_3"))
+            time.sleep(0.1)
             os.mkdir(os.path.join(temp_filesystem, "plate_4"))
+            time.sleep(0.1)
             os.mkdir(os.path.join(temp_filesystem, "plate_5"))
+            time.sleep(0.1)
             os.mkdir(os.path.join(temp_filesystem, "plate_6"))
             # remove old plates
             bcl_manager.remove_old_plates(temp_filesystem)
