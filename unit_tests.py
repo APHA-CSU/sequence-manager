@@ -161,10 +161,14 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         """
             Test removing old plates
         """
+        # test partially clearning directory
         # mock bcl_manager.shutil.rmtree - but retain functionality
         bcl_manager.shutil.rmtree = Mock(wraps=shutil.rmtree)
         # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            # by the fourth call to bcl_manager.monitor_disk_usage, the filesystem
+            # has > 50% space, therefor bcl_manager.shutil.rmtree() should be called
+            # 3 times only
             mock_monitor_disk_usage.side_effect = [(100, 0), 
                                                    (100, 20), 
                                                    (100, 40), 
@@ -193,14 +197,31 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                         unittest.mock.call(os.path.join(temp_directory, "plate_3"))]
         # assert bcl_manager.shutil.rmtreee has expected calls
         bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
-        # mock bcl_manager.monitor_disk_usage with side-effect (no space)
+
+        # test fully clearning directory
+        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            mock_monitor_disk_usage.side_effect = [(100, 0)] 
+            mock_monitor_disk_usage.side_effect = [(100, 0), 
+                                                   (100, 20), 
+                                                   (100, 40), 
+                                                   (100, 60), 
+                                                   (100, 80), 
+                                                   (100, 100)]
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
+                # make directories sequentially (mock plates) 
+                # 2 plates only: directory empties before filesystem has > 50% free space
+                os.mkdir(os.path.join(temp_directory, "plate_1"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_2"))
+                # assert that temp_direcotry is emptied abd the exception is raised
                 with self.assertRaises(bcl_manager.EmptyDirectoryError):
-                    # calls bcl_manager.remove_old_plates() with an empty directory
                     bcl_manager.remove_old_plates(temp_directory)
+        # expected calls to bcl_manager.shutil.rmtree
+        rmtree_calls = [unittest.mock.call(os.path.join(temp_directory, "plate_1")),
+                        unittest.mock.call(os.path.join(temp_directory, "plate_2"))]
+        # assert bcl_manager.shutil.rmtreee has expected calls
+        bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
 
 
 if __name__ == '__main__':
