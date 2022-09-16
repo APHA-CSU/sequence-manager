@@ -28,6 +28,13 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
 """
 
+class EmptyDirectoryError(Exception):
+    def __init__(self, directory_path):
+        self.message = (f"'{directory_path}' is empty")
+    
+    def __str__(self):
+        return self.message
+
 
 def convert_to_fastq(src_dir, dest_dir):
     """
@@ -136,20 +143,32 @@ def clean_up(directories):
         (default behaviour), then data is only deleted from a directory path if the 
         preceding directory path is empty.  
     """
-    for directory in directories:
-        remove_old_plates(directory)
+    for directory_path in directories:
+        try:
+            remove_old_plates(directory_path)
+        # continue if directory_path is an empty folder
+        except EmptyDirectoryError as _:
+            pass
 
-def remove_old_plates(filepath):
+def remove_old_plates(directory_path):
     """
-        Removes oldest files within the filepath until filesystem the filepath
-        is mounted on has > 50% free space.
+        Removes oldest files within 'directory_path' (str) until filesystem the 
+        filepath is mounted on has > 50% free space.
     """
     while True:
-        total, free = monitor_disk_usage(filepath)
+        # check if directory_path is empty
+        if not os.listdir(directory_path):
+            raise EmptyDirectoryError(directory_path)
+        # get free space on HD
+        total, free = monitor_disk_usage(directory_path)
+        # if < 50% free space
         if free / total < 0.5:
-            oldest = min(os.listdir(filepath), 
-                            key=lambda p: os.path.getctime(os.path.join(filepath, p)))
-            shutil.rmtree(os.path.join(filepath, oldest))
+            # get oldest object in directory_path
+            oldest = min(os.listdir(directory_path), 
+                         key=lambda p: os.path.getctime(os.path.join(directory_path, p)))
+            # delete oldest object
+            shutil.rmtree(os.path.join(directory_path, oldest))
+        # if > 50% free space: break and return 
         else:
             break
 
