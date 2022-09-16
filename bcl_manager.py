@@ -127,6 +127,18 @@ def log_disk_usage(filepath):
 
     logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
 
+def clean_up(directories):
+    """
+        Removes oldest files from the directory paths in each element of 'directories' 
+        (list), until the filesystem that the filepath is mounted on has > 50% free 
+        space. Directories are scanned and cleaned in order of their index 
+        in 'directories', i.e. If all paths in 'directories' are on the same filesystem 
+        (default behaviour), then data is only deleted from a directory path if the 
+        preceding directory path is empty.  
+    """
+    for directory in directories:
+        remove_old_plates(directory)
+
 def remove_old_plates(filepath):
     """
         Removes oldest files within the filepath until filesystem the filepath
@@ -209,10 +221,8 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
-        # remove old plates if filesystem has > 50% space. 
-        remove_old_plates(self.watch_dir)
-        remove_old_plates(self.backup_dir)
-        remove_old_plates(self.fastq_dir)
+        # remove oldest plates until HD has > 50% space. 
+        clean_up([self.watch_dir, self.backup_dir, self.fastq_dir])
 
     def on_created(self, event):
         """Called when a file or directory is created.

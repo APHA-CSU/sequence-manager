@@ -185,7 +185,8 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # expected calls to bcl_manager.shutil.rmtree
         rmtree_calls = [unittest.mock.call(os.path.join(temp_filesystem, "plate_1")),
                         unittest.mock.call(os.path.join(temp_filesystem, "plate_2")),
-                        unittest.mock.call(os.path.join(temp_filesystem, "plate_3"))]
+                        unittest.mock.call(os.path.join(temp_filesystem, "plate_3")),
+                        unittest.mock.call(os.path.join(temp_filesystem, "plate_4"))]
         # assert bcl_manager.shutil.rmtreee has expected calls
         bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
 
