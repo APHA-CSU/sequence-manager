@@ -1,5 +1,4 @@
 import unittest
-import unittest.mock
 from unittest.mock import Mock, MagicMock, patch
 import time
 import os
@@ -164,30 +163,45 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         """
         # mock bcl_manager.shutil.rmtree - but retain functionality
         bcl_manager.shutil.rmtree = Mock(wraps=shutil.rmtree)
-        # mock bcl_manager.monitor_disk_usage with side effects
-        mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
-        # use a temporary directory as a mock filesystem
-        with tempfile.TemporaryDirectory() as temp_filesystem:
-            # make directories sequentially (mock plates)
-            os.mkdir(os.path.join(temp_filesystem, "plate_1"))
-            time.sleep(0.1)
-            os.mkdir(os.path.join(temp_filesystem, "plate_2"))
-            time.sleep(0.1)
-            os.mkdir(os.path.join(temp_filesystem, "plate_3"))
-            time.sleep(0.1)
-            os.mkdir(os.path.join(temp_filesystem, "plate_4"))
-            time.sleep(0.1)
-            os.mkdir(os.path.join(temp_filesystem, "plate_5"))
-            time.sleep(0.1)
-            os.mkdir(os.path.join(temp_filesystem, "plate_6"))
-            # remove old plates
-            bcl_manager.remove_old_plates(temp_filesystem)
+        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
+        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            mock_monitor_disk_usage.side_effect = [(100, 0), 
+                                                   (100, 20), 
+                                                   (100, 40), 
+                                                   (100, 60), 
+                                                   (100, 80), 
+                                                   (100, 100)]
+            # use a temporary directory as a 'sandbox'
+            with tempfile.TemporaryDirectory() as temp_directory:
+                # make directories sequentially (mock plates)
+                os.mkdir(os.path.join(temp_directory, "plate_1"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_2"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_3"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_4"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_5"))
+                time.sleep(0.1)
+                os.mkdir(os.path.join(temp_directory, "plate_6"))
+                # remove old plates
+                bcl_manager.remove_old_plates(temp_directory)
         # expected calls to bcl_manager.shutil.rmtree
-        rmtree_calls = [unittest.mock.call(os.path.join(temp_filesystem, "plate_1")),
-                        unittest.mock.call(os.path.join(temp_filesystem, "plate_2")),
-                        unittest.mock.call(os.path.join(temp_filesystem, "plate_3"))]
+        rmtree_calls = [unittest.mock.call(os.path.join(temp_directory, "plate_1")),
+                        unittest.mock.call(os.path.join(temp_directory, "plate_2")),
+                        unittest.mock.call(os.path.join(temp_directory, "plate_3"))]
         # assert bcl_manager.shutil.rmtreee has expected calls
         bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
+        # mock bcl_manager.monitor_disk_usage with side-effect (no space)
+        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            mock_monitor_disk_usage.side_effect = [(100, 0)] 
+            # use a temporary directory as a 'sandbox'
+            with tempfile.TemporaryDirectory() as temp_directory:
+                with self.assertRaises(bcl_manager.EmptyDirectoryError):
+                    # calls bcl_manager.remove_old_plates() with an empty directory
+                    bcl_manager.remove_old_plates(temp_directory)
+
 
 if __name__ == '__main__':
     unittest.main()
