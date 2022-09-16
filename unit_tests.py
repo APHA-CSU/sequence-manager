@@ -13,10 +13,16 @@ from bcl_manager import SubdirectoryException
 
 class TestBclManager(fake_filesystem_unittest.TestCase):
     def setUp(self):
-        #self.setUpPyfakefs()
-        pass
+        """
+            Set up method
+        """
+        # use "fake" in-memory filesystem
+        self.setUpPyfakefs()
 
     def tearDown(self):
+        """
+            Tear down method
+        """
         pass
 
     def test_handler_construction(self):
@@ -152,37 +158,30 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
     @patch("bcl_manager.monitor_disk_usage")
     def test_remove_old_plates(self, mock_monitor_disk_usage):
+        """
+            Test removing old plates
+        """
+        # mock bcl_manager.shutil.rmtree - but retain functionality
         bcl_manager.shutil.rmtree = Mock(wraps=shutil.rmtree)
+        # mock bcl_manager.monitor_disk_usage with side effects
         mock_monitor_disk_usage.side_effect = [(100, 0), (100, 20), (100, 40), (100, 60), (100, 80), (100, 100)]
+        # use a temporary directory as a mock filesystem
         with tempfile.TemporaryDirectory() as temp_filesystem:
-            os.mkdir(os.path.join(temp_filesystem, "a"))
-            os.mkdir(os.path.join(temp_filesystem, "b"))
-            os.mkdir(os.path.join(temp_filesystem, "c"))
-            os.mkdir(os.path.join(temp_filesystem, "d"))
-            os.mkdir(os.path.join(temp_filesystem, "e"))
-            os.mkdir(os.path.join(temp_filesystem, "f"))
-            #with open(os.path.join(temp_filesystem, "a"), "w") as _:
-                #pass
-            #with open(os.path.join(temp_filesystem, "b"), "w") as _:
-                #pass
-            #with open(os.path.join(temp_filesystem, "c"), "w") as _:
-                #pass
-            #with open(os.path.join(temp_filesystem, "d"), "w") as _:
-                #pass
-            #with open(os.path.join(temp_filesystem, "e"), "w") as _:
-                #pass
-            #with open(os.path.join(temp_filesystem, "f"), "w") as _:
-                #pass
+            # make directories sequentially - mock plates
+            os.mkdir(os.path.join(temp_filesystem, "plate_1"))
+            os.mkdir(os.path.join(temp_filesystem, "plate_2"))
+            os.mkdir(os.path.join(temp_filesystem, "plate_3"))
+            os.mkdir(os.path.join(temp_filesystem, "plate_4"))
+            os.mkdir(os.path.join(temp_filesystem, "plate_5"))
+            os.mkdir(os.path.join(temp_filesystem, "plate_6"))
+            # remove old plates
             bcl_manager.remove_old_plates(temp_filesystem)
-        calls = [unittest.mock.call(os.path.join(temp_filesystem, "a")),
-                 unittest.mock.call(os.path.join(temp_filesystem, "b")),
-                 unittest.mock.call(os.path.join(temp_filesystem, "c"))]
-        bcl_manager.shutil.rmtree.assert_has_calls(calls)
-
-
-
-            # call bcl_manager.remove_old_plates() and ensure that shutil.rmtree was called the correct number of times
-            # should perhaps consider mocking out all the IO functions - don't know.
+        # expected calls to bcl_manager.shutil.rmtree
+        rmtree_calls = [unittest.mock.call(os.path.join(temp_filesystem, "plate_1")),
+                        unittest.mock.call(os.path.join(temp_filesystem, "plate_2")),
+                        unittest.mock.call(os.path.join(temp_filesystem, "plate_3"))]
+        # assert bcl_manager.shutil.rmtreee has expected calls
+        bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
 
 if __name__ == '__main__':
     unittest.main()
