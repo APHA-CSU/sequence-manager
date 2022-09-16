@@ -167,7 +167,10 @@ def remove_old_plates(directory_path):
             oldest = min(os.listdir(directory_path), 
                          key=lambda p: os.path.getctime(os.path.join(directory_path, p)))
             # delete oldest object
-            shutil.rmtree(os.path.join(directory_path, oldest))
+            try:
+                shutil.rmtree(os.path.join(directory_path, oldest))
+            except NotADirectoryError as e:
+                logging.info(f"Not deleting '{oldest}' as filepath does not match plate format")
         # if > 50% free space: break and return 
         else:
             break
