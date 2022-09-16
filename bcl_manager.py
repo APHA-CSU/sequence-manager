@@ -148,12 +148,19 @@ def clean_up(directories):
             remove_old_plates(directory_path)
         # continue if directory_path is an empty folder
         except EmptyDirectoryError as _:
-            pass    
+            logging.info(f"'{directory_path}' is empty")
 
-def remove_old_plates(directory_path):
+def remove_old_plates(directory_path, min_required_space=0.5):
     """
         Removes oldest files within 'directory_path' (str) until filesystem the 
-        filepath is mounted on has > 50% free space.
+        filepath is mounted on has more than 'min_required_space' available free 
+        space as a fraction of total filesystem capacity.
+
+        params:
+            directory_path (string): path to directory from which to delete data
+
+            min_rquired_space (float): fraction of filesystem capacity rquired as 
+            free space
     """
     while True:
         # check if directory_path is empty
@@ -162,13 +169,14 @@ def remove_old_plates(directory_path):
         # get free space on HD
         total, free = monitor_disk_usage(directory_path)
         # if < 50% free space
-        if free / total < 0.5:
+        if free / total < min_required_space:
             # get oldest object in directory_path
             oldest = min(os.listdir(directory_path), 
                          key=lambda p: os.path.getctime(os.path.join(directory_path, p)))
             # delete oldest object
             try:
                 shutil.rmtree(os.path.join(directory_path, oldest))
+                logging.info(f"Removing old data: '{oldest}'")
             except NotADirectoryError as e:
                 logging.info(f"Not deleting '{oldest}' as filepath does not match plate format")
         # if > 50% free space: break and return 
