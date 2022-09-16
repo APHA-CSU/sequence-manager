@@ -148,7 +148,7 @@ def clean_up(directories):
             remove_old_plates(directory_path)
         # continue if directory_path is an empty folder
         except EmptyDirectoryError as _:
-            pass
+            pass    
 
 def remove_old_plates(directory_path):
     """
