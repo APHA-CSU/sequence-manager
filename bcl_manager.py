@@ -132,54 +132,17 @@ def log_disk_usage(filepath):
 
     logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
 
-def clean_up(directories):
+def remove_plate(plate_paths):
     """
-        Removes oldest files from the directory paths in each element of 'directories' 
-        (list), until the filesystem that the filepath is mounted on has > 50% free 
-        space. Directories are scanned and cleaned in order of their index 
-        in 'directories', i.e. If all paths in 'directories' are on the same filesystem 
-        (default behaviour), then data is only deleted from a directory path if the 
-        preceding directory path is empty.  
+        Deletes the directory tree at the paths in each element of 'plate_paths' (list)
     """
-    for directory_path in directories:
+    for path in plate_paths:
         try:
-            remove_old_plates(directory_path)
-        # continue if directory_path is an empty folder
-        except EmptyDirectoryError as _:
-            logging.info(f"'{directory_path}' is empty")
-
-def remove_old_plates(directory_path, min_required_space=0.5):
-    """
-        Removes oldest files within 'directory_path' (str) until filesystem the 
-        filepath is mounted on has more than 'min_required_space' available free 
-        space, as a fraction of total filesystem capacity.
-
-        params:
-            directory_path (string): path to directory from which to delete data
-
-            min_rquired_space (float): fraction of filesystem capacity rquired as 
-            free space
-    """
-    while True:
-        # check if directory_path is empty
-        if not os.listdir(directory_path):
-            raise EmptyDirectoryError(directory_path)
-        # get free space on HD
-        total, free = monitor_disk_usage(directory_path)
-        # if < 50% free space
-        if free / total < min_required_space:
-            # get oldest object in directory_path
-            oldest = min(os.listdir(directory_path), 
-                         key=lambda p: os.path.getctime(os.path.join(directory_path, p)))
-            # delete oldest object
-            try:
-                shutil.rmtree(os.path.join(directory_path, oldest))
-                logging.info(f"Removing old data: '{oldest}'")
-            except NotADirectoryError as _:
-                logging.info(f"Not deleting '{oldest}' as filepath does not match plate format")
-        # if > 50% free space: break and return 
-        else:
-            break
+            shutil.rmtree(path)
+            logging.info(f"Removing old data: '{path}'")
+        except NotADirectoryError as _:
+            logging.info(f"Not deleting '{path}' as filepath does not match plate format")
+    
 
 class BclEventHandler(FileSystemEventHandler):
     """
@@ -223,6 +186,7 @@ class BclEventHandler(FileSystemEventHandler):
             raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
 
         # Log disk usage
+        log_disk_usage(self.watch_dir)
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)
 
@@ -249,8 +213,31 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
-        # remove oldest plates until HD has > 50% space. 
-        clean_up([self.watch_dir, self.backup_dir, self.fastq_dir])
+        # remove oldest plates until HD has required free space 
+        self.clean_up()
+
+    def clean_up(self, min_required_space=0.5):
+        """
+            Runs through all fully processed plates and deletes relevant data from
+            fastq_dir, watch_dir and backup_dir if there is insuffecient space on the
+            HD. NOTE: this will only delete data if that plate has been fully processed.
+        """
+        # get list of processed plates sorted from oldest to youngest
+        plates_by_time = sorted(os.listdir(self.fastq_dir), 
+            key=lambda p: os.path.getctime(os.path.join(self.fastq_dir, p)))
+        # loop through processed plates (oldest-youngest)
+        for plate in plates_by_time:
+            # paths of processed data, backup and raw bcl
+            oldest_fastq = os.path.join(self.fastq_dir, plate)
+            oldest_bcl = os.path.join(self.watch_dir, plate)
+            oldest_backup = os.path.join(self.backup_dir, plate)
+            # get free space on filesystem
+            total, free = monitor_disk_usage(oldest_fastq)
+            if free / total < min_required_space:
+                # remove oldest data from the 3 data directories
+                remove_plate([oldest_fastq, oldest_bcl, oldest_backup])
+            else:
+                break
 
     def on_created(self, event):
         """Called when a file or directory is created.
