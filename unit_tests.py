@@ -156,6 +156,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
+    # TODO: change to test_clean_up - and mock remove_plate() function
     @patch("bcl_manager.monitor_disk_usage")
     def test_remove_old_plates(self, mock_monitor_disk_usage):
         """
