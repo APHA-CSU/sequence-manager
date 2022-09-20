@@ -1,5 +1,3 @@
-import sys
-import time
 import logging
 import ntpath
 import argparse
@@ -13,7 +11,7 @@ import glob
 from datetime import datetime
 
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler
 
 from s3_logging_handler import S3LoggingHandler
 
@@ -154,7 +152,7 @@ def remove_old_plates(directory_path, min_required_space=0.5):
     """
         Removes oldest files within 'directory_path' (str) until filesystem the 
         filepath is mounted on has more than 'min_required_space' available free 
-        space as a fraction of total filesystem capacity.
+        space, as a fraction of total filesystem capacity.
 
         params:
             directory_path (string): path to directory from which to delete data
@@ -177,7 +175,7 @@ def remove_old_plates(directory_path, min_required_space=0.5):
             try:
                 shutil.rmtree(os.path.join(directory_path, oldest))
                 logging.info(f"Removing old data: '{oldest}'")
-            except NotADirectoryError as e:
+            except NotADirectoryError as _:
                 logging.info(f"Not deleting '{oldest}' as filepath does not match plate format")
         # if > 50% free space: break and return 
         else:
