@@ -203,11 +203,12 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                               os.path.join(temp_directory, "watch_dir/plate_2"), 
                                               os.path.join(temp_directory, "backup_dir/plate_2")])
 
+        # TODO: test emptying directory - the test is that it works without raising exceptions atm - but perhaps can be signalled by a return value from clean_up() method 
         # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
             mock_monitor_disk_usage.side_effect = [(100, 0), 
                                                    (100, 40), 
-                                                   (100, 60)] 
+                                                   (100, 45)] 
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
                 # 'mock-up' plates - raw bcl data
@@ -234,13 +235,17 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 # remove old plates
                 handler.clean_up()
         # assert bcl_manager.remove_plate first call
+        # TODO: make ordered
         bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
                                            os.path.join(temp_directory, "watch_dir/plate_1"), 
                                            os.path.join(temp_directory, "backup_dir/plate_1")])
+        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_2"), 
+                                           os.path.join(temp_directory, "watch_dir/plate_2"), 
+                                           os.path.join(temp_directory, "backup_dir/plate_2")])
         # assert bcl_manager.remove_plate last call
-        bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
-                                              os.path.join(temp_directory, "watch_dir/plate_2"), 
-                                              os.path.join(temp_directory, "backup_dir/plate_2")])
+        bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_3"), 
+                                              os.path.join(temp_directory, "watch_dir/plate_3"), 
+                                              os.path.join(temp_directory, "backup_dir/plate_3")])
 
        # # test fully clearning directory
        # # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)

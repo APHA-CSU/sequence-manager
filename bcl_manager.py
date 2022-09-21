@@ -216,6 +216,7 @@ class BclEventHandler(FileSystemEventHandler):
         # remove oldest plates until HD has required free space 
         self.clean_up()
 
+    #TODO: set return values or exceptions depending on outcome, e.g. if directories are emptied
     def clean_up(self, min_required_space=0.5):
         """
             Runs through all fully processed plates and deletes relevant data from
