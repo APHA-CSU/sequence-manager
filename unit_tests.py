@@ -157,11 +157,12 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
             bcl_manager.upload(bad_src_path, '', '', '')
 
     # TODO: change to test_clean_up - and mock remove_plate() function
-    @patch("bcl_manager.remove_plate")
-    def test_remove_old_plates(self, mock_remove_plate):
+    #@patch("bcl_manager.remove_plate")
+    def test_remove_old_plates(self):#, mock_remove_plate):
         """
             Test removing old plates
         """
+        bcl_manager.remove_plate = Mock(wraps=bcl_manager.remove_plate)
         bcl_manager.log_disk_usage = Mock()
         # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
@@ -194,11 +195,50 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 # remove old plates
                 handler.clean_up()
         # assert bcl_manager.remove_plate first call
-        mock_remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
+        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
                                            os.path.join(temp_directory, "watch_dir/plate_1"), 
                                            os.path.join(temp_directory, "backup_dir/plate_1")])
         # assert bcl_manager.remove_plate last call
-        mock_remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
+        bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
+                                              os.path.join(temp_directory, "watch_dir/plate_2"), 
+                                              os.path.join(temp_directory, "backup_dir/plate_2")])
+
+        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
+        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            mock_monitor_disk_usage.side_effect = [(100, 0), 
+                                                   (100, 40), 
+                                                   (100, 60)] 
+            # use a temporary directory as a 'sandbox'
+            with tempfile.TemporaryDirectory() as temp_directory:
+                # 'mock-up' plates - raw bcl data
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_2"))
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_3"))
+                # 'mock-up' plates - backup bcl data
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_2"))
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_3"))
+                # 'mock-up' plates - processed data
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_1"))
+                time.sleep(0.1)
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2"))
+                time.sleep(0.1)
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3"))
+                # Test handler
+                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
+                                                      os.path.join(temp_directory, "backup_dir"), 
+                                                      os.path.join(temp_directory, "fastq_dir"),
+                                                      '', 
+                                                      '', 
+                                                      '')
+                # remove old plates
+                handler.clean_up()
+        # assert bcl_manager.remove_plate first call
+        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
+                                           os.path.join(temp_directory, "watch_dir/plate_1"), 
+                                           os.path.join(temp_directory, "backup_dir/plate_1")])
+        # assert bcl_manager.remove_plate last call
+        bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
                                               os.path.join(temp_directory, "watch_dir/plate_2"), 
                                               os.path.join(temp_directory, "backup_dir/plate_2")])
 
