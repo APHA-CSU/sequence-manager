@@ -234,43 +234,16 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '')
                 # remove old plates
                 handler.clean_up()
-        # assert bcl_manager.remove_plate first call
-        # TODO: make ordered
-        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
-                                           os.path.join(temp_directory, "watch_dir/plate_1"), 
-                                           os.path.join(temp_directory, "backup_dir/plate_1")])
-        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_2"), 
-                                           os.path.join(temp_directory, "watch_dir/plate_2"), 
-                                           os.path.join(temp_directory, "backup_dir/plate_2")])
-        # assert bcl_manager.remove_plate last call
+        remove_plate_calls = [unittest.mock.call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
+                                                  os.path.join(temp_directory, "watch_dir/plate_1"), 
+                                                  os.path.join(temp_directory, "backup_dir/plate_1")]),
+                              unittest.mock.call([os.path.join(temp_directory, "fastq_dir/plate_2"), 
+                                                  os.path.join(temp_directory, "watch_dir/plate_2"), 
+                                                  os.path.join(temp_directory, "backup_dir/plate_2")])]
+        bcl_manager.remove_plate.assert_has_calls(remove_plate_calls)
         bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_3"), 
                                               os.path.join(temp_directory, "watch_dir/plate_3"), 
                                               os.path.join(temp_directory, "backup_dir/plate_3")])
-
-       # # test fully clearning directory
-       # # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
-       # with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-       #     mock_monitor_disk_usage.side_effect = [(100, 0), 
-       #                                            (100, 20), 
-       #                                            (100, 40), 
-       #                                            (100, 60), 
-       #                                            (100, 80), 
-       #                                            (100, 100)]
-       #     # use a temporary directory as a 'sandbox'
-       #     with tempfile.TemporaryDirectory() as temp_directory:
-       #         # make directories sequentially (mock plates) 
-       #         # 2 plates only: directory empties before filesystem has > 50% free space
-       #         os.makedirs(os.path.join(temp_directory, "plate_1"))
-       #         time.sleep(0.1)
-       #         os.makedirs(os.path.join(temp_directory, "plate_2"))
-       #         # assert that temp_direcotry is emptied abd the exception is raised
-       #         with self.assertRaises(bcl_manager.EmptyDirectoryError):
-       #             bcl_manager.remove_old_plates(temp_directory)
-       # # expected calls to bcl_manager.shutil.rmtree
-       # rmtree_calls = [unittest.mock.call(os.path.join(temp_directory, "plate_1")),
-       #                 unittest.mock.call(os.path.join(temp_directory, "plate_2"))]
-       # # assert bcl_manager.shutil.rmtreee has expected calls
-       # bcl_manager.shutil.rmtree.assert_has_calls(rmtree_calls)
 
 
 if __name__ == '__main__':
