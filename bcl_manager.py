@@ -26,9 +26,10 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
 """
 
-class EmptyDirectoryError(Exception):
-    def __init__(self, directory_path):
-        self.message = (f"'{directory_path}' is empty")
+class NoDataError(Exception):
+    def __init__(self):
+        self.message =  "All processed plates deleted but there is still insuffecient \
+                         space on the filesystem: consider manually deleting redundant files"
     
     def __str__(self):
         return self.message
@@ -214,14 +215,21 @@ class BclEventHandler(FileSystemEventHandler):
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
         # remove oldest plates until HD has required free space 
-        self.clean_up()
+        try:
+            self.clean_up()
+        except NoDataError as e:
+            logging.exception(e)
 
-    #TODO: set return values or exceptions depending on outcome, e.g. if directories are emptied
     def clean_up(self, min_required_space=0.5):
         """
             Runs through all fully processed plates and deletes relevant data from
             fastq_dir, watch_dir and backup_dir if there is insuffecient space on the
             HD. NOTE: this will only delete data if that plate has been fully processed.
+
+            returns:
+                True: if all processed data is removed
+                False: if the processed data remains, i.e. the required amount of free 
+                space is achieved before deleting all processed data
         """
         # get list of processed plates sorted from oldest to youngest
         plates_by_time = sorted(os.listdir(self.fastq_dir), 
@@ -238,7 +246,12 @@ class BclEventHandler(FileSystemEventHandler):
                 # remove oldest data from the 3 data directories
                 remove_plate([oldest_fastq, oldest_bcl, oldest_backup])
             else:
-                break
+                # suffecient space cleared
+                return 0
+        # raise exception if there is insuffecient space on the HD and 
+        # no processed plates to delete  
+        if free / total < min_required_space:
+            raise NoDataError()
 
     def on_created(self, event):
         """Called when a file or directory is created.
