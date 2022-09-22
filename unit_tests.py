@@ -5,8 +5,8 @@ import os
 import tempfile
 
 from pyfakefs import fake_filesystem_unittest
-
 import watchdog
+
 import bcl_manager
 from bcl_manager import SubdirectoryException
 
@@ -16,8 +16,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
             Set up method
         """
         # use "fake" in-memory filesystem
-        pass
-        #self.setUpPyfakefs()
+        self.setUpPyfakefs()
 
     def tearDown(self):
         """
