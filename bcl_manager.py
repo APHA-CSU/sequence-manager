@@ -232,6 +232,10 @@ class BclEventHandler(FileSystemEventHandler):
             HD. NOTE: this will only delete data if that plate has been fully processed.
 
             returns:
+                0:  if suffecient space on the filesystem is recovered
+            raises:
+                NoMoreDataError: if there is insuffecient space on the filesystem
+                and no more processed plates to delete 
         """
         # get list of processed plates sorted from oldest to youngest
         plates_by_time = sorted(os.listdir(self.fastq_dir), 

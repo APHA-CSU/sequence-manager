@@ -196,7 +196,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '')
                 # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(), 0)
+                self.assertEqual(handler.clean_up(0.5), 0)
         # assert bcl_manager.remove_plate first call
         bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
                                                   os.path.join(temp_directory, "watch_dir/plate_1"), 
@@ -233,7 +233,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '')
                 # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(), 0)
+                self.assertEqual(handler.clean_up(0.5), 0)
         # assert bcl_manager.remove_plate called only once with plate_1
         bcl_manager.remove_plate.assert_called_once_with([os.path.join(temp_directory, "fastq_dir/plate_1"), 
                                                           os.path.join(temp_directory, "watch_dir/plate_1"), 
@@ -265,7 +265,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '')
                 # remove old plates - assert NoMoreDataError
                 with self.assertRaises(bcl_manager.NoMoreDataError):
-                    self.assertRaises(handler.clean_up())
+                    self.assertRaises(handler.clean_up(0.5))
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
 
@@ -290,7 +290,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '')
                 # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(), 0)
+                self.assertEqual(handler.clean_up(0.5), 0)
                 # assert bcl_manager.remove_plate() is never called
                 bcl_manager.remove_plate.assert_not_called()
 
