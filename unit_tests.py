@@ -202,8 +202,39 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
                                               os.path.join(temp_directory, "watch_dir/plate_2"), 
                                               os.path.join(temp_directory, "backup_dir/plate_2")])
+        # reset call attributes of bcl_manager.remove_plate mock
+        bcl_manager.remove_plate.reset_mock()
 
-        # TODO: test when there are un processed plates
+        # test when there are un-processed plates, i.e. "plate_2"
+        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
+        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            mock_monitor_disk_usage.side_effect = [(100, 0), 
+                                                   (100, 60)] 
+            # use a temporary directory as a 'sandbox'
+            with tempfile.TemporaryDirectory() as temp_directory:
+                # 'mock-up' plates - raw bcl data
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_2"))
+                # 'mock-up' plates - backup bcl data
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_2"))
+                # 'mock-up' plates - processed data
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_1"))
+                # Test handler
+                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
+                                                      os.path.join(temp_directory, "backup_dir"), 
+                                                      os.path.join(temp_directory, "fastq_dir"),
+                                                      '', 
+                                                      '', 
+                                                      '')
+                # remove old plates - assert normal return
+                self.assertEqual(handler.clean_up(), 0)
+        # assert bcl_manager.remove_plate called only once with plate_1
+        bcl_manager.remove_plate.assert_called_once_with([os.path.join(temp_directory, "fastq_dir/plate_1"), 
+                                                          os.path.join(temp_directory, "watch_dir/plate_1"), 
+                                                          os.path.join(temp_directory, "backup_dir/plate_1")])
+        # reset call attributes of bcl_manager.remove_plate mock
+        bcl_manager.remove_plate.reset_mock()
 
         # Test remove all processed plates
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
@@ -225,7 +256,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '')
                 # remove old plates - assert NoDataError
-                with self.assertRaises(bcl_manager.NoDataError):
+                with self.assertRaises(bcl_manager.NoMoreDataError):
                     self.assertRaises(handler.clean_up())
 
 if __name__ == '__main__':

@@ -26,7 +26,7 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
 """
 
-class NoDataError(Exception):
+class NoMoreDataError(Exception):
     def __init__(self):
         self.message =  "All processed plates deleted but there is still insuffecient \
                          space on the filesystem: consider manually deleting redundant files"
@@ -217,7 +217,7 @@ class BclEventHandler(FileSystemEventHandler):
         # remove oldest plates until HD has required free space 
         try:
             self.clean_up()
-        except NoDataError as e:
+        except NoMoreDataError as e:
             logging.exception(e)
 
     def clean_up(self, min_required_space=0.5):
@@ -227,9 +227,6 @@ class BclEventHandler(FileSystemEventHandler):
             HD. NOTE: this will only delete data if that plate has been fully processed.
 
             returns:
-                True: if all processed data is removed
-                False: if the processed data remains, i.e. the required amount of free 
-                space is achieved before deleting all processed data
         """
         # get list of processed plates sorted from oldest to youngest
         plates_by_time = sorted(os.listdir(self.fastq_dir), 
@@ -250,8 +247,12 @@ class BclEventHandler(FileSystemEventHandler):
                 return 0
         # raise exception if there is insuffecient space on the HD and 
         # no processed plates to delete  
+        total, free = monitor_disk_usage(oldest_fastq)
         if free / total < min_required_space:
-            raise NoDataError()
+            raise NoMoreDataError()
+        else:
+            # suffecient space cleared
+            return 0
 
     def on_created(self, event):
         """Called when a file or directory is created.
