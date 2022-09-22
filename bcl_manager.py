@@ -27,6 +27,10 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 """
 
 class NoMoreDataError(Exception):
+    """
+        This exception is raised if there is no processed data left to delete and
+        there is insuffecient space left on HD 
+    """
     def __init__(self):
         self.message =  "All processed plates deleted but there is still insuffecient \
                          space on the filesystem: consider manually deleting redundant files"

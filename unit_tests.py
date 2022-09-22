@@ -163,9 +163,12 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         bcl_manager.remove_plate = Mock(wraps=bcl_manager.remove_plate)
         bcl_manager.log_disk_usage = Mock()
 
-        # Test normal functionality
+        # Test removing 2 fully processed plates and leaving the 3rd due to suffecient 
+        # space remaining on HD
+
         # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            # side effects: 0%; 40%; 60% free space
             mock_monitor_disk_usage.side_effect = [(100, 0), 
                                                    (100, 40), 
                                                    (100, 60)] 
@@ -205,9 +208,11 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
 
-        # test when there are un-processed plates, i.e. "plate_2"
-        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
+
+        # Test when there are un-processed plates, i.e. "plate_2" - only plate_1 should be removed
+
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            # side effects: 0%; 60% free space
             mock_monitor_disk_usage.side_effect = [(100, 0), 
                                                    (100, 60)] 
             # use a temporary directory as a 'sandbox'
@@ -235,9 +240,12 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                           os.path.join(temp_directory, "backup_dir/plate_1")])
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
+        
 
-        # Test remove all processed plates
+        # Test remove all processed plates but insuffecient space left on HD
+
         with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
+            # side effects: 0%; 0% free space
             mock_monitor_disk_usage.side_effect = [(100, 0), 
                                                    (100, 0)] 
             # use a temporary directory as a 'sandbox'
@@ -255,7 +263,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '', 
                                                       '')
-                # remove old plates - assert NoDataError
+                # remove old plates - assert NoMoreDataError
                 with self.assertRaises(bcl_manager.NoMoreDataError):
                     self.assertRaises(handler.clean_up())
 
