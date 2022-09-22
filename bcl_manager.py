@@ -221,6 +221,7 @@ class BclEventHandler(FileSystemEventHandler):
         # remove oldest plates until HD has required free space 
         try:
             self.clean_up()
+        # don't crash if there is no more data to delete but log the exception
         except NoMoreDataError as e:
             logging.exception(e)
 
@@ -242,7 +243,7 @@ class BclEventHandler(FileSystemEventHandler):
             oldest_bcl = os.path.join(self.watch_dir, plate)
             oldest_backup = os.path.join(self.backup_dir, plate)
             # get free space on filesystem
-            total, free = monitor_disk_usage(oldest_fastq)
+            total, free = monitor_disk_usage(self.fastq_dir)
             if free / total < min_required_space:
                 # remove oldest data from the 3 data directories
                 remove_plate([oldest_fastq, oldest_bcl, oldest_backup])
@@ -251,7 +252,7 @@ class BclEventHandler(FileSystemEventHandler):
                 return 0
         # raise exception if there is insuffecient space on the HD and 
         # no processed plates to delete  
-        total, free = monitor_disk_usage(oldest_fastq)
+        total, free = monitor_disk_usage(self.fastq_dir)
         if free / total < min_required_space:
             raise NoMoreDataError()
         else:
