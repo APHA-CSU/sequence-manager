@@ -185,7 +185,7 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Process
         logging.info(f'Backing up Raw Bcl Run: {backup_path}')
-        copy(abs_src_path, backup_path)
+        #copy(abs_src_path, backup_path)
 
         logging.info(f'Converting to fastq: {fastq_path}')
         #convert_to_fastq(abs_src_path, fastq_path)
@@ -199,7 +199,7 @@ class BclEventHandler(FileSystemEventHandler):
         """
             Runs btb and salmonella pipelines in aws batch
         """
-        results_bucket = "s3-staging-area"
+        results_bucket = "s3-csu-004"
         # Get run number of the plate
         # TODO - dry
         abs_src_path = os.path.dirname(os.path.abspath(src_path)) + '/'
@@ -219,7 +219,7 @@ class BclEventHandler(FileSystemEventHandler):
 
         run_id = match.group(2)
 
-        # Upload each directory that contains fastq files
+        # process each directory that contains fastq files
         for dirname in glob.glob(src_path + '*/'):
             # Skip if no fastq.gz in the directory
             if not glob.glob(dirname + '*.fastq.gz'):
@@ -231,12 +231,16 @@ class BclEventHandler(FileSystemEventHandler):
 
             if project_code in BTB_PROJECT_CODES:
                 self.btb_batch.submit_job(name="btb-seq-test-job", reads_key=reads_key,
-                                          results_key="v3-2/btb", reads_bucket=self.fastq_bucket, 
-                                          results_bucket=results_bucket)
+                                          results_key="v3-2/btb", work_key="v3-2/btb/work",
+                                          reads_bucket=self.fastq_bucket, results_bucket=results_bucket,
+                                          work_bucket=results_bucket)
             elif project_code in SALMONELLA_PROJECT_CODES:
                 self.salmonella_batch.submit_job(name="salm-seq-test-job", reads_key=reads_key,
-                                                 results_key="v3-2/salmonella", reads_bucket=self.fastq_bucket,
-                                                 results_bucket=results_bucket)
+                                                 results_key="v3-2/salmonella", 
+                                                 work_key="v3-2/salmonella/work",
+                                                 reads_bucket=self.fastq_bucket,
+                                                 results_bucket=results_bucket,
+                                                 work_bucket=results_bucket)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -321,10 +325,10 @@ if __name__ == "__main__":
     parser.add_argument('dir', nargs='?', default='/home/nickpestell/batch/IncomingRuns/', help='Watch directory')
     parser.add_argument('--backup-dir', default='/home/nickpestell/batch/OutputFastq/BclRuns/', help='Where to backup data to')
     parser.add_argument('--fastq-dir', default='/home/nickpestell/batch/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
-    parser.add_argument('--s3-log-bucket', default='s3-staging-area', help='S3 Bucket to upload log file')
-    parser.add_argument('--s3-log-key', default='nickpestell/logs/bcl-manager.log', help='S3 Key to upload log file')
-    parser.add_argument('--s3-fastq-bucket', default='s3-staging-area', help='S3 Bucket to upload fastq files')
-    parser.add_argument('--s3-fastq-key', default='nickpestell/fastq/', help='S3 Key to upload fastq data')
+    parser.add_argument('--s3-log-bucket', default='s3-csu-004', help='S3 Bucket to upload log file')
+    parser.add_argument('--s3-log-key', default='logs/bcl-manager.log', help='S3 Key to upload log file')
+    parser.add_argument('--s3-fastq-bucket', default='s3-csu-004', help='S3 Bucket to upload fastq files')
+    parser.add_argument('--s3-fastq-key', default='', help='S3 Key to upload fastq data')
     parser.add_argument('--s3-endpoint-url', default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com', help='aws s3 endpoint url')
 
     args = parser.parse_args()

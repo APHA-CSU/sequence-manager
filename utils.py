@@ -62,7 +62,8 @@ def upload_json(bucket, key, endpoint_url, dictionary, indent=4):
     s3 = boto3.resource('s3')#, endpoint_url=endpoint_url)
     obj = s3.Object(bucket, key)
 
-    obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
+    obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))), 
+            ACL="bucket-owner-full-control")
 
 def s3_download_file(bucket, key, dest, endpoint_url):
     """

@@ -32,5 +32,6 @@ class S3LoggingHandler(FileHandler):
         super().emit(record)
 
         # Upload to S3
-        self.s3.upload_file(self.baseFilename, self.bucket, self.key)
+        self.s3.upload_file(self.baseFilename, self.bucket, self.key, 
+                            ExtraArgs={"ACL": "bucket-owner-full-control"})
 
