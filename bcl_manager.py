@@ -24,6 +24,7 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 - Backup of raw .bcl data locally
 - Conversion of raw .bcl data into .fastq
 - Upload of .fastq files to S3 according to project code
+- Triggers WGS pipelines for bTB and salmonella in AWS batch
 
 """
 
@@ -231,16 +232,13 @@ class BclEventHandler(FileSystemEventHandler):
 
             if project_code in BTB_PROJECT_CODES:
                 self.btb_batch.submit_job(name="btb-seq-test-job", reads_key=reads_key,
-                                          results_key="v3-2/btb", work_key="v3-2/btb/work",
-                                          reads_bucket=self.fastq_bucket, results_bucket=results_bucket,
-                                          work_bucket=results_bucket)
+                                          results_key="v3-2/btb", 
+                                          reads_bucket=self.fastq_bucket, results_bucket=results_bucket)
             elif project_code in SALMONELLA_PROJECT_CODES:
                 self.salmonella_batch.submit_job(name="salm-seq-test-job", reads_key=reads_key,
                                                  results_key="v3-2/salmonella", 
-                                                 work_key="v3-2/salmonella/work",
                                                  reads_bucket=self.fastq_bucket,
-                                                 results_bucket=results_bucket,
-                                                 work_bucket=results_bucket)
+                                                 results_bucket=results_bucket)
 
     def on_created(self, event):
         """Called when a file or directory is created.
