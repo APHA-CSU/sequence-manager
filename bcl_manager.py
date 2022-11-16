@@ -158,8 +158,12 @@ class BclEventHandler(FileSystemEventHandler):
         self.s3_endpoint_url = s3_endpoint_url
 
         # Instantiate batch objects
-        self.btb_batch = csuBatch(job_definition_name="btb-seq-job-def", vcpus="4", memory="8192")
-        self.salmonella_batch = csuBatch(job_definition_name="sal-seq-job-def", vcpus="4", memory="8192")
+        self.btb_batch = csuBatch(job_definition_name="btb-seq-job-def", 
+                                  vcpus="4", 
+                                  memory="8192")
+        self.salmonella_batch = csuBatch(job_definition_name="sal-seq-job-def", 
+                                         vcpus="4", 
+                                         memory="8192")
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -213,7 +217,8 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Extract metadata
         # TODO - dry
-        match = re.search(r'(.+)_((.+)_(.+))_(.+)', basename(os.path.dirname(src_path)))
+        match = re.search(r'(.+)_((.+)_(.+))_(.+)', 
+                          basename(os.path.dirname(src_path)))
 
         if not match:
             raise Exception(f'Could not extract run number from {src_path}')
@@ -231,11 +236,14 @@ class BclEventHandler(FileSystemEventHandler):
             reads_key = f'{prefix}{project_code}/{run_id}'
 
             if project_code in BTB_PROJECT_CODES:
-                self.btb_batch.submit_job(name="btb-seq-test-job", reads_key=reads_key,
+                self.btb_batch.submit_job(name="btb-seq-test-job", 
+                                          reads_key=reads_key,
                                           results_key="v3-2/btb", 
-                                          reads_bucket=self.fastq_bucket, results_bucket=results_bucket)
+                                          reads_bucket=self.fastq_bucket, 
+                                          results_bucket=results_bucket)
             elif project_code in SALMONELLA_PROJECT_CODES:
-                self.salmonella_batch.submit_job(name="salm-seq-test-job", reads_key=reads_key,
+                self.salmonella_batch.submit_job(name="salm-seq-test-job", 
+                                                 reads_key=reads_key,
                                                  results_key="v3-2/salmonella", 
                                                  reads_bucket=self.fastq_bucket,
                                                  results_bucket=results_bucket)
