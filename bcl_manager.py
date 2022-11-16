@@ -202,31 +202,29 @@ class BclEventHandler(FileSystemEventHandler):
 
     def run_batch_pipelines(self, src_path, prefix):
         """
-            Runs btb and salmonella pipelines in aws batch
+            Runs btb and salmonella pipelines for a single plate in AWS 
+            batch
         """
         results_bucket = "s3-csu-004"
-        # Get run number of the plate
         # TODO - dry
+        # Get run number of the plate
         abs_src_path = os.path.dirname(os.path.abspath(src_path)) + '/'
         src_name = basename(abs_src_path[:-1])
 
-        fastq_path = self.fastq_dir + src_name + '/'
-
-        src_path = os.path.join(fastq_path, '')
+        # Local path of converted fastq data
+        fastq_path = os.path.join(self.fastq_dir, src_name, '')
         prefix = os.path.join(prefix, '')
 
-        # Extract metadata
         # TODO - dry
+        # Extract run_id
         match = re.search(r'(.+)_((.+)_(.+))_(.+)', 
-                          basename(os.path.dirname(src_path)))
-
+                          basename(os.path.dirname(fastq_path)))
         if not match:
-            raise Exception(f'Could not extract run number from {src_path}')
-
+            raise Exception(f'Could not extract run number from {fastq_path}')
         run_id = match.group(2)
 
         # process each directory that contains fastq files
-        for dirname in glob.glob(src_path + '*/'):
+        for dirname in glob.glob(fastq_path + '*/'):
             # Skip if no fastq.gz in the directory
             if not glob.glob(dirname + '*.fastq.gz'):
                 continue        
