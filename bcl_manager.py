@@ -160,10 +160,10 @@ class BclEventHandler(FileSystemEventHandler):
         # Instantiate batch objects
         self.btb_batch = csuBatch(job_definition_name="btb-seq-job-def", 
                                   vcpus="4", 
-                                  memory="8192")
+                                  memory="16348")
         self.salmonella_batch = csuBatch(job_definition_name="sal-seq-job-def", 
                                          vcpus="4", 
-                                         memory="8192")
+                                         memory="16348")
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
