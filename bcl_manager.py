@@ -236,12 +236,16 @@ class BclEventHandler(FileSystemEventHandler):
             reads_key = f'{prefix}{project_code}/{run_id}'
 
             if project_code in BTB_PROJECT_CODES:
+                logging.info('Submitting bTB pipeline to AWS batch: %s' \
+                    % reads_key)
                 self.btb_batch.submit_job(name="btb-seq-test-job", 
                                           reads_key=reads_key,
                                           results_key="v3-2/btb", 
                                           reads_bucket=self.fastq_bucket, 
                                           results_bucket=results_bucket)
             elif project_code in SALMONELLA_PROJECT_CODES:
+                logging.info('Submitting salmonella pipeline to AWS batch: %s' \
+                    % reads_key)
                 self.salmonella_batch.submit_job(name="salm-seq-test-job", 
                                                  reads_key=reads_key,
                                                  results_key="v3-2/salmonella", 
