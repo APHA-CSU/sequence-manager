@@ -139,14 +139,16 @@ def log_disk_usage(filepath):
 
 def remove_plate(plate_paths):
     """
-        Deletes the directory tree at the paths in each element of 'plate_paths' (list)
+        Deletes the directory tree at the paths in each element of 
+        'plate_paths' (list)
     """
     for path in plate_paths:
         try:
             shutil.rmtree(path)
             logging.info(f"Removing old data: '{path}'")
         except NotADirectoryError as _:
-            logging.info(f"Not deleting '{path}' as filepath does not match plate format")
+            logging.info(f"Not deleting '{path}' as filepath does not match \
+                plate format")
     
 
 class BclEventHandler(FileSystemEventHandler):
@@ -218,50 +220,27 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
-        # remove oldest plates until HD has required free space 
-        try:
-            self.clean_up()
-        # don't crash if there is no more data to delete but log the exception
-        except NoMoreDataError as e:
-            logging.exception(e)
-
-    def clean_up(self, min_required_space=0.5):
+    def clean_up(self):
         """
-            Runs through all fully processed plates and deletes relevant data from
-            fastq_dir, watch_dir and backup_dir if there is insuffecient space on the
-            HD. NOTE: this will only delete data if that plate has been fully processed.
-
-            returns:
-                0:  if suffecient space on the filesystem is recovered
-            raises:
-                NoMoreDataError: if there is insuffecient space on the filesystem
-                and no more processed plates to delete 
+            Runs through all fully processed plates and deletes relevant
+            data from fastq_dir, watch_dir and backup_dir if there any 
+            processed plate is older than 30 days. NOTE: this will only 
+            delete data if that plate has been fully processed.
         """
-        # get list of processed plates sorted from oldest to youngest
-        plates_by_time = sorted(os.listdir(self.fastq_dir), 
-            key=lambda p: os.path.getctime(os.path.join(self.fastq_dir, p)))
-        # loop through processed plates (oldest-youngest)
-        for plate in plates_by_time:
-            # paths of processed data, backup and raw bcl
-            oldest_fastq = os.path.join(self.fastq_dir, plate)
-            oldest_bcl = os.path.join(self.watch_dir, plate)
-            oldest_backup = os.path.join(self.backup_dir, plate)
-            # get free space on filesystem
-            total, free = monitor_disk_usage(self.fastq_dir)
-            if free / total < min_required_space:
-                # remove oldest data from the 3 data directories
-                remove_plate([oldest_fastq, oldest_bcl, oldest_backup])
-            else:
-                # suffecient space cleared
-                return 0
-        # raise exception if there is insuffecient space on the HD and 
-        # no processed plates to delete  
-        total, free = monitor_disk_usage(self.fastq_dir)
-        if free / total < min_required_space:
-            raise NoMoreDataError()
-        else:
-            # suffecient space cleared
-            return 0
+        today = datetime.datetime.today()
+        for plate in os.listdir(self.fastqdir):
+            # dattime of fastq processing for each plate
+            modified_date = \
+                datetime.datetime.fromtimestamp(os.path.getmtime(plate))
+            # age of the processed plate
+            age = today - modified_date
+            # delete processed, raw and backup files if processed plate is older
+            # 30 days
+            if age.days < 30:
+                fastq = os.path.join(self.fastq_dir, plate)
+                bcl = os.path.join(self.watch_dir, plate)
+                backup = os.path.join(self.backup_dir, plate)
+                remove_plate([fastq, bcl, backup])
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -286,6 +265,9 @@ class BclEventHandler(FileSystemEventHandler):
         except Exception as e:
             logging.exception(e)
             raise e
+
+        # remove all plates where the processed data is older than 30 days
+        self.clean_up()
 
         # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
