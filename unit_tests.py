@@ -10,6 +10,7 @@ import watchdog
 import bcl_manager
 from bcl_manager import SubdirectoryException
 
+
 class TestBclManager(fake_filesystem_unittest.TestCase):
     def setUp(self):
         """
@@ -159,18 +160,35 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         """
             Test removing old plates
         """
+        # mock remove_plate but retain functionality
         bcl_manager.remove_plate = Mock(wraps=bcl_manager.remove_plate)
-        bcl_manager.log_disk_usage = Mock()
+        bcl_manager.os.path.getmtime = Mock()
 
-        # Test removing 2 fully processed plates and leaving the 3rd due to suffecient 
-        # space remaining on HD
+        # Test removing 2 fully processed plates and leaving the 3rd as it is <
+        # 30 days old
 
         # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
-        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            # side effects: 0%; 40%; 60% free space
-            mock_monitor_disk_usage.side_effect = [(100, 0), 
-                                                   (100, 40), 
-                                                   (100, 60)] 
+        with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
+            def mock_getmtime_returns(dirname):
+                """
+                    Inner function for return value of mocked 
+                    os.path.getmtime(). The return value (age of the dir) is
+                    dependent on the argument name of the directory. Return
+                    values simulate directories of ages 32, 31 and 29 days.
+                """
+                now = time.time()
+                plate_name = os.path.basename(dirname)
+                if plate_name == "plate_1":
+                    return now - 2764801
+                elif plate_name == "plate_2":
+                    return now - 2678401
+                elif plate_name == "plate_3":
+                    return now - 2505601
+                else:
+                    raise Exception("not a valid mock plate name")
+            # side effects: current time less 32 days; 31 days; 29 days (in 
+            # seconds), i.e. simulating plates of 32, 31 and 29 days old
+            mock_getmtime.side_effect = lambda x: mock_getmtime_returns(x)
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
                 # 'mock-up' plates - raw bcl data
@@ -183,9 +201,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 os.makedirs(os.path.join(temp_directory, "backup_dir/plate_3"))
                 # 'mock-up' plates - processed data
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_1"))
-                time.sleep(0.1)
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2"))
-                time.sleep(0.1)
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3"))
                 # Test handler
                 handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
@@ -194,8 +210,8 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '', 
                                                       '')
-                # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(0.5), 0)
+                # call clean_up
+                handler.clean_up()
         # assert bcl_manager.remove_plate first call
         bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
                                                   os.path.join(temp_directory, "watch_dir/plate_1"), 
@@ -207,23 +223,28 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
 
+        # Test removing no plates
 
-        # Test when there are un-processed plates, i.e. "plate_2" - only plate_1 should be removed
-
-        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            # side effects: 0%; 60% free space
-            mock_monitor_disk_usage.side_effect = [(100, 0), 
-                                                   (100, 60)] 
+        # mock bcl_manager.monitor_disk_usage with side-effects (increasing space)
+        with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
+            now = time.time()
+            # side effects: current time less 29 daysin 
+            # seconds), i.e. simulating plates of 32, 31 and 29 days old
+            mock_getmtime.side_effect = now - 2505601
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
                 # 'mock-up' plates - raw bcl data
                 os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
                 os.makedirs(os.path.join(temp_directory, "watch_dir/plate_2"))
+                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_3"))
                 # 'mock-up' plates - backup bcl data
                 os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
                 os.makedirs(os.path.join(temp_directory, "backup_dir/plate_2"))
+                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_3"))
                 # 'mock-up' plates - processed data
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_1"))
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2"))
+                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3"))
                 # Test handler
                 handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
                                                       os.path.join(temp_directory, "backup_dir"), 
@@ -231,67 +252,8 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '', 
                                                       '', 
                                                       '')
-                # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(0.5), 0)
-        # assert bcl_manager.remove_plate called only once with plate_1
-        bcl_manager.remove_plate.assert_called_once_with([os.path.join(temp_directory, "fastq_dir/plate_1"), 
-                                                          os.path.join(temp_directory, "watch_dir/plate_1"), 
-                                                          os.path.join(temp_directory, "backup_dir/plate_1")])
-        # reset call attributes of bcl_manager.remove_plate mock
-        bcl_manager.remove_plate.reset_mock()
-        
-
-        # Test remove all processed plates but insuffecient space left on HD
-
-        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            # side effects: 0%; 0% free space
-            mock_monitor_disk_usage.side_effect = [(100, 0), 
-                                                   (100, 0)] 
-            # use a temporary directory as a 'sandbox'
-            with tempfile.TemporaryDirectory() as temp_directory:
-                # 'mock-up' plates - raw bcl data
-                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
-                # 'mock-up' plates - backup bcl data
-                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
-                # 'mock-up' plates - processed data
-                os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_1"))
-                # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                      os.path.join(temp_directory, "backup_dir"), 
-                                                      os.path.join(temp_directory, "fastq_dir"),
-                                                      '', 
-                                                      '', 
-                                                      '')
-                # remove old plates - assert NoMoreDataError
-                with self.assertRaises(bcl_manager.NoMoreDataError):
-                    self.assertRaises(handler.clean_up(0.5))
-        # reset call attributes of bcl_manager.remove_plate mock
-        bcl_manager.remove_plate.reset_mock()
-
-        # Test no processed plates to remove
-
-        with patch("bcl_manager.monitor_disk_usage") as mock_monitor_disk_usage:
-            # side effects: 100% free space
-            mock_monitor_disk_usage.side_effect = [(100, 100)] 
-            # use a temporary directory as a 'sandbox'
-            with tempfile.TemporaryDirectory() as temp_directory:
-                # 'mock-up' plates - raw bcl data
-                os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
-                # 'mock-up' plates - backup bcl data
-                os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
-                # 'mock-up' empty processed data directory
-                os.mkdir(os.path.join(temp_directory, "fastq_dir"))
-                # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                      os.path.join(temp_directory, "backup_dir"), 
-                                                      os.path.join(temp_directory, "fastq_dir"),
-                                                      '', 
-                                                      '', 
-                                                      '')
-                # remove old plates - assert normal return
-                self.assertEqual(handler.clean_up(0.5), 0)
-                # assert bcl_manager.remove_plate() is never called
-                bcl_manager.remove_plate.assert_not_called()
+        # assert bcl_manager.remove_plate 
+        assert not bcl_manager.remove_plate.called
 
 if __name__ == '__main__':
     unittest.main()

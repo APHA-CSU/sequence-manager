@@ -220,6 +220,9 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
+        # remove all plates where the processed data is older than 30 days
+        self.clean_up()
+
     def clean_up(self):
         """
             Runs through all fully processed plates and deletes relevant
@@ -227,16 +230,16 @@ class BclEventHandler(FileSystemEventHandler):
             processed plate is older than 30 days. NOTE: this will only 
             delete data if that plate has been fully processed.
         """
-        today = datetime.datetime.today()
-        for plate in os.listdir(self.fastqdir):
+        today = datetime.today()
+        for plate in os.listdir(self.fastq_dir):
             # dattime of fastq processing for each plate
             modified_date = \
-                datetime.datetime.fromtimestamp(os.path.getmtime(plate))
+                datetime.fromtimestamp(os.path.getmtime(plate))
             # age of the processed plate
             age = today - modified_date
             # delete processed, raw and backup files if processed plate is older
             # 30 days
-            if age.days < 30:
+            if age.days > 30:
                 fastq = os.path.join(self.fastq_dir, plate)
                 bcl = os.path.join(self.watch_dir, plate)
                 backup = os.path.join(self.backup_dir, plate)
@@ -265,9 +268,6 @@ class BclEventHandler(FileSystemEventHandler):
         except Exception as e:
             logging.exception(e)
             raise e
-
-        # remove all plates where the processed data is older than 30 days
-        self.clean_up()
 
         # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
