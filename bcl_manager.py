@@ -243,7 +243,8 @@ class BclEventHandler(FileSystemEventHandler):
                 fastq = os.path.join(self.fastq_dir, plate)
                 bcl = os.path.join(self.watch_dir, plate)
                 backup = os.path.join(self.backup_dir, plate)
-                remove_plate([fastq, bcl, backup])
+                #remove_plate([fastq, bcl, backup])
+                remove_plate([fastq])
 
     def on_created(self, event):
         """Called when a file or directory is created.
