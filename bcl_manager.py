@@ -1,5 +1,3 @@
-import sys
-import time
 import logging
 import ntpath
 import argparse
@@ -13,7 +11,7 @@ import glob
 from datetime import datetime
 
 from watchdog.observers import Observer
-from watchdog.events import LoggingEventHandler, FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler
 
 from s3_logging_handler import S3LoggingHandler
 
@@ -27,6 +25,18 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 - Upload of .fastq files to S3 according to project code
 
 """
+
+class NoMoreDataError(Exception):
+    """
+        This exception is raised if there is no processed data left to delete and
+        there is insuffecient space left on HD 
+    """
+    def __init__(self):
+        self.message =  "All processed plates deleted but there is still insuffecient \
+                         space on the filesystem: consider manually deleting redundant files"
+    
+    def __str__(self):
+        return self.message
 
 
 def convert_to_fastq(src_dir, dest_dir):
@@ -113,16 +123,33 @@ def upload(src_path, bucket, prefix, s3_endpoint_url):
             "upload_time": str(datetime.now())
         })
         utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
-        
 
+def monitor_disk_usage(filepath):
+    total, used, free = shutil.disk_usage(filepath)
+    return (total, free)
+        
 def log_disk_usage(filepath):
     """
         Logs the level of free space in gb for the fileystem the filepath is mounted on
     """
-    total, used, free = shutil.disk_usage(filepath)
+    total, free = monitor_disk_usage(filepath)
     free_gb = free / 1024**3
 
     logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
+
+def remove_plate(plate_paths):
+    """
+        Deletes the directory tree at the paths in each element of 
+        'plate_paths' (list)
+    """
+    for path in plate_paths:
+        try:
+            shutil.rmtree(path)
+            logging.info(f"Removing old data: '{path}'")
+        except NotADirectoryError as _:
+            logging.info(f"Not deleting '{path}' as filepath does not match \
+                plate format")
+    
 
 class BclEventHandler(FileSystemEventHandler):
     """
@@ -130,6 +157,7 @@ class BclEventHandler(FileSystemEventHandler):
     """
 
     def __init__(self, 
+        watch_dir,
         backup_dir, 
         fastq_dir, 
         fastq_bucket, 
@@ -142,6 +170,9 @@ class BclEventHandler(FileSystemEventHandler):
         # Creation of this file indicates that an Illumina Machine has finished transferring
         # a plate of raw bcl reads
         self.copy_complete_filename = copy_complete_filename
+
+        # Directory to watch for new incoming bcl data
+        self.watch_dir = watch_dir + os.path.join('')
 
         # Raw Bcl Data backed up here (one dir for each plate)
         self.backup_dir = backup_dir + os.path.join('')
@@ -162,8 +193,10 @@ class BclEventHandler(FileSystemEventHandler):
             raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
 
         # Log disk usage
+        log_disk_usage(self.watch_dir)
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)
+
 
     def process_bcl_plate(self, src_path):
         """
@@ -187,7 +220,31 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Uploading {fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         upload(fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
 
-        # TODO: Remove old plates     
+        # remove all plates where the processed data is older than 30 days
+        self.clean_up()
+
+    def clean_up(self):
+        """
+            Runs through all fully processed plates and deletes relevant
+            data from fastq_dir, watch_dir and backup_dir if there any 
+            processed plate is older than 30 days. NOTE: this will only 
+            delete data if that plate has been fully processed.
+        """
+        today = datetime.today()
+        for plate in os.listdir(self.fastq_dir):
+            # dattime of fastq processing for each plate
+            modified_date = \
+                datetime.fromtimestamp(os.path.getmtime(plate))
+            # age of the processed plate
+            age = today - modified_date
+            # delete processed, raw and backup files if processed plate is older
+            # 30 days
+            if age.days > 30:
+                fastq = os.path.join(self.fastq_dir, plate)
+                bcl = os.path.join(self.watch_dir, plate)
+                backup = os.path.join(self.backup_dir, plate)
+                #remove_plate([fastq, bcl, backup])
+                remove_plate([fastq, bcl])
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -246,7 +303,7 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
+    handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
