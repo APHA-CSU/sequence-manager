@@ -156,7 +156,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         with self.assertRaises(Exception):
             bcl_manager.upload(bad_src_path, '', '', '')
 
-    def test_remove_old_plates(self):#, mock_remove_plate):
+    def test_clean_up(self):#, mock_remove_plate):
         """
             Test removing old plates
         """
