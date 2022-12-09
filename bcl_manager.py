@@ -234,7 +234,8 @@ class BclEventHandler(FileSystemEventHandler):
         for plate in os.listdir(self.fastq_dir):
             # dattime of fastq processing for each plate
             modified_date = \
-                datetime.fromtimestamp(os.path.getmtime(plate))
+                    datetime.fromtimestamp(os.path.getmtime(\
+                    os.path.join(self.fastq_dir, plate)))
             # age of the processed plate
             age = today - modified_date
             # delete processed, raw and backup files if processed plate is older
