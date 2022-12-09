@@ -26,18 +26,6 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 
 """
 
-class NoMoreDataError(Exception):
-    """
-        This exception is raised if there is no processed data left to delete and
-        there is insuffecient space left on HD 
-    """
-    def __init__(self):
-        self.message =  "All processed plates deleted but there is still insuffecient \
-                         space on the filesystem: consider manually deleting redundant files"
-    
-    def __str__(self):
-        return self.message
-
 
 def convert_to_fastq(src_dir, dest_dir):
     """
@@ -142,14 +130,14 @@ def remove_plate(plate_paths):
         Deletes the directory tree at the paths in each element of 
         'plate_paths' (list)
     """
-    for path in plate_paths:
-        try:
+    try:
+        for path in plate_paths:
             shutil.rmtree(path)
             logging.info(f"Removing old data: '{path}'")
-        except NotADirectoryError as _:
-            logging.info(f"Not deleting '{path}' as filepath does not match \
-                plate format")
-    
+    except NotADirectoryError as _:
+        logging.info(f"Not deleting '{path}' as filepath does not match "     
+            "plate format")
+
 
 class BclEventHandler(FileSystemEventHandler):
     """
@@ -234,11 +222,12 @@ class BclEventHandler(FileSystemEventHandler):
         for plate in os.listdir(self.fastq_dir):
             # dattime of fastq processing for each plate
             modified_date = \
-                datetime.fromtimestamp(os.path.getmtime(plate))
+                    datetime.fromtimestamp(os.path.getmtime(\
+                    os.path.join(self.fastq_dir, plate)))
             # age of the processed plate
             age = today - modified_date
             # delete processed, raw and backup files if processed plate is older
-            # 30 days
+            # than 30 days
             if age.days > 30:
                 fastq = os.path.join(self.fastq_dir, plate)
                 bcl = os.path.join(self.watch_dir, plate)
