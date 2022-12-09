@@ -13,18 +13,18 @@ from bcl_manager import SubdirectoryException
 
 
 class TestBclManager(fake_filesystem_unittest.TestCase):
-    #def setUp(self):
-        #"""
-            #Set up method
-        #"""
-        ## use "fake" in-memory filesystem
-        #self.setUpPyfakefs()
+    def setUp(self):
+       """
+          #Set up method
+       """
+       # use "fake" in-memory filesystem
+       self.setUpPyfakefs()
 
-    #def tearDown(self):
-        #"""
-            #Tear down method
-        #"""
-        #pass
+    def tearDown(self):
+       """
+          #Tear down method
+       """
+       pass
 
     def test_handler_construction(self):
         # Succeeds when output directories exist
