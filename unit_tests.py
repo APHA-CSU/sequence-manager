@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, call
 import time
 import os
 import tempfile
@@ -176,12 +176,15 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                     dependent on the argument name of the directory. Return
                     values simulate directories of ages 32, 31 and 29 days.
                 """
+                # assert that bcl_manager.os.path.getmtime() is called on 
+                # existing path
+                self.assertTrue(os.path.exists(dirname))
                 now = time.time()
                 plate_name = os.path.basename(dirname)
                 if plate_name == "plate_1":
-                    return now - 2764801
+                    return now - 2851200
                 elif plate_name == "plate_2":
-                    return now - 2678401
+                    return now - 2764801
                 elif plate_name == "plate_3":
                     return now - 2505601
                 else:
@@ -204,20 +207,18 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2"))
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3"))
                 # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                      os.path.join(temp_directory, "backup_dir"), 
+                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"),
+                                                      os.path.join(temp_directory, "backup_dir"),
                                                       os.path.join(temp_directory, "fastq_dir"),
                                                       '', 
                                                       '', 
                                                       '')
                 # call clean_up
                 handler.clean_up()
-        # assert bcl_manager.remove_plate first call
-        bcl_manager.remove_plate.assert_any_call([os.path.join(temp_directory, "fastq_dir/plate_1"), 
-                                                  os.path.join(temp_directory, "watch_dir/plate_1")])
-        # assert bcl_manager.remove_plate last call
-        bcl_manager.remove_plate.assert_called_with([os.path.join(temp_directory, "fastq_dir/plate_2"), 
-                                                     os.path.join(temp_directory, "watch_dir/plate_2")])
+        correct_calls = [call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "watch_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "watch_dir/plate_2")])]
+        # assert correct calls regardless of order
+        self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
 
