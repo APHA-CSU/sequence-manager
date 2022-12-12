@@ -134,9 +134,8 @@ def remove_plate(plate_paths):
         for path in plate_paths:
             shutil.rmtree(path)
             logging.info(f"Removing old data: '{path}'")
-    except NotADirectoryError as _:
-        logging.info(f"Not deleting '{path}' as filepath does not match "     
-            "plate format")
+    except PermissionError as e:
+        logging.info(f"Cannot delete. {e}")
 
 
 class BclEventHandler(FileSystemEventHandler):
@@ -214,26 +213,33 @@ class BclEventHandler(FileSystemEventHandler):
     def clean_up(self):
         """
             Runs through all fully processed plates and deletes relevant
-            data from fastq_dir, watch_dir and backup_dir if there any 
-            processed plate is older than 30 days. NOTE: this will only 
-            delete data if that plate has been fully processed.
+            data from fastq_dir, watch_dir and backup_dir if there are 
+            any processed plates is older than 30 days. NOTE: this will 
+            only delete data if that plate has been fully processed.
         """
         today = datetime.today()
         for plate in os.listdir(self.fastq_dir):
-            # dattime of fastq processing for each plate
-            modified_date = \
-                    datetime.fromtimestamp(os.path.getmtime(\
-                    os.path.join(self.fastq_dir, plate)))
-            # age of the processed plate
-            age = today - modified_date
-            # delete processed, raw and backup files if processed plate is older
-            # than 30 days
-            if age.days > 30:
-                fastq = os.path.join(self.fastq_dir, plate)
-                bcl = os.path.join(self.watch_dir, plate)
-                backup = os.path.join(self.backup_dir, plate)
-                #remove_plate([fastq, bcl, backup])
-                remove_plate([fastq, bcl])
+            # ensure that plate is a folder
+            try:
+                fastq_plate = os.path.join(self.fastq_dir, plate)
+                fastq_contents = os.listdir(fastq_plate)
+                # ensure the folder matches processed plate format 
+                if "Logs" in fastq_contents and "Reports" in fastq_contents:
+                    # datetime of fastq processing for each plate
+                    modified_date = \
+                            datetime.fromtimestamp(\
+                                os.path.getmtime(fastq_plate))
+                    # age of the processed plate
+                    age = today - modified_date
+                    # delete processed, raw and backup files if processed plate 
+                    # is older than 30 days
+                    if age.days > 30:
+                        bcl_plate = os.path.join(self.watch_dir, plate)
+                        #backup_plate = os.path.join(self.backup_dir, plate)
+                        #remove_plate([fastq_plate, bcl_plate, backup_plate])
+                        remove_plate([fastq_plate, bcl_plate])
+            except NotADirectoryError:
+                pass
 
     def on_created(self, event):
         """Called when a file or directory is created.
