@@ -234,10 +234,10 @@ class BclEventHandler(FileSystemEventHandler):
                     # delete processed, raw and backup files if processed plate 
                     # is older than 30 days
                     if age.days > 30:
-                        bcl_plate = os.path.join(self.watch_dir, plate)
-                        #backup_plate = os.path.join(self.backup_dir, plate)
+                        #bcl_plate = os.path.join(self.watch_dir, plate)
+                        backup_plate = os.path.join(self.backup_dir, plate)
                         #remove_plate([fastq_plate, bcl_plate, backup_plate])
-                        remove_plate([fastq_plate, bcl_plate])
+                        remove_plate([fastq_plate, backup_plate])
             except NotADirectoryError:
                 pass
 
