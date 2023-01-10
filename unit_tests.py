@@ -220,8 +220,8 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                         '')
                 # call clean_up
                 handler.clean_up()
-        correct_calls = [call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "watch_dir/plate_1")]),
-                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "watch_dir/plate_2")])]
+        correct_calls = [call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "backup_dir/plate_2")])]
         # assert correct calls regardless of order
         self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # reset call attributes of bcl_manager.remove_plate mock
@@ -301,7 +301,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # 'fastq_dir/plate_1' filepath, i.e. skips filepaths that do not match
         # plate format 
         bcl_manager.remove_plate.assert_called_once_with([os.path.join(temp_directory, "fastq_dir/plate_1"),
-                                                          os.path.join(temp_directory, "watch_dir/plate_1")])
+                                                          os.path.join(temp_directory, "backup_dir/plate_1")])
         # assert NotADirectoryError is raised (plate_3)
         self.assertRaises(NotADirectoryError)
 
