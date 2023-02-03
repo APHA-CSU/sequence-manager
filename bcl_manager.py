@@ -212,19 +212,27 @@ class BclEventHandler(FileSystemEventHandler):
 
     def clean_up(self):
         """
-            Runs through all fully processed plates and deletes relevant
-            data from fastq_dir, watch_dir and backup_dir if there are 
-            any processed plates is older than 30 days. NOTE: this will 
-            only delete data if that plate has been fully processed.
+            Runs through all fully processed plates and deletes bcl data
+            from watch-dir (IncomingRuns). Also deletes fastq data from 
+            fastq_dir and backup bcl data from backup_dir (OutputFastq) 
+            ONLY if any processed plate is older than 30 days. 
+            NOTE: this will only delete data if that plate has been 
+            fully processed.
         """
         today = datetime.today()
         for plate in os.listdir(self.fastq_dir):
             # ensure that plate is a folder
             try:
+                # backup & fastq plates
                 fastq_plate = os.path.join(self.fastq_dir, plate)
                 fastq_contents = os.listdir(fastq_plate)
                 # ensure the folder matches processed plate format 
                 if "Logs" in fastq_contents and "Reports" in fastq_contents:
+                    # bcl data
+                    bcl_plate = os.path.join(self.watch_dir, plate)
+                    if os.path.isdir(bcl_plate):
+                        # delete processed bcl data
+                        remove_plate([bcl_plate])
                     # datetime of fastq processing for each plate
                     modified_date = \
                             datetime.fromtimestamp(\
@@ -234,9 +242,7 @@ class BclEventHandler(FileSystemEventHandler):
                     # delete processed, raw and backup files if processed plate 
                     # is older than 30 days
                     if age.days > 30:
-                        #bcl_plate = os.path.join(self.watch_dir, plate)
                         backup_plate = os.path.join(self.backup_dir, plate)
-                        #remove_plate([fastq_plate, bcl_plate, backup_plate])
                         remove_plate([fastq_plate, backup_plate])
             except NotADirectoryError:
                 pass

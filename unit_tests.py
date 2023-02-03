@@ -164,10 +164,10 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
         def mock_getmtime_returns(dirname):
             """
-                #Inner function for return value of mocked 
-                #os.path.getmtime(). The return value (age of the dir) is
-                #dependent on the argument name of the directory. Return
-                #values simulate directories of ages 32, 31 and 29 days.
+                Inner function for return value of mocked 
+                os.path.getmtime(). The return value (age of the dir) is
+                dependent on the argument name of the directory. Return
+                values simulate directories of ages 32, 31 and 29 days.
             """
             # assert that bcl_manager.os.path.getmtime() is called on 
             # existing path
@@ -220,8 +220,11 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                         '')
                 # call clean_up
                 handler.clean_up()
-        correct_calls = [call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")]),
-                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "backup_dir/plate_2")])]
+        correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "watch_dir/plate_2")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "backup_dir/plate_2")]),
+                         call([os.path.join(temp_directory, "watch_dir/plate_3")])]
         # assert correct calls regardless of order
         self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # reset call attributes of bcl_manager.remove_plate mock
@@ -229,7 +232,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # reset call attributes of bcl_manager.os.path.getmtime mock
         bcl_manager.os.path.getmtime.reset_mock()
 
-        # Test removing no plates
+        # Test removing no processed data as data < 30 days old
 
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
             now = time.time()
@@ -262,8 +265,11 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                                                       '')
                 # call clean_up
                 handler.clean_up()
-        # assert bcl_manager.remove_plate 
-        assert not bcl_manager.remove_plate.called
+        correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "watch_dir/plate_2")]),
+                         call([os.path.join(temp_directory, "watch_dir/plate_3")])]
+        # assert correct calls regardless of order
+        self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # reset call attributes of bcl_manager.remove_plate mock
         bcl_manager.remove_plate.reset_mock()
         # reset call attributes of bcl_manager.os.path.getmtime mock
@@ -300,10 +306,36 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # assert bcl_manager.shutil.rmtree() is called only once with 
         # 'fastq_dir/plate_1' filepath, i.e. skips filepaths that do not match
         # plate format 
-        bcl_manager.remove_plate.assert_called_once_with([os.path.join(temp_directory, "fastq_dir/plate_1"),
-                                                          os.path.join(temp_directory, "backup_dir/plate_1")])
+        correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")])]
+        # assert correct calls regardless of order
+        self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # assert NotADirectoryError is raised (plate_3)
         self.assertRaises(NotADirectoryError)
+        # reset call attributes of bcl_manager.remove_plate mock
+        bcl_manager.remove_plate.reset_mock()
+
+        # Test do not remove unprocessed plates
+
+        # use a temporary directory as a 'sandbox'
+        with tempfile.TemporaryDirectory() as temp_directory:
+            # 'mock-up' plates - raw bcl data
+            os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
+            # 'mock-up' plates - backup bcl data
+            os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
+            # create fastq_dir
+            os.makedirs(os.path.join(temp_directory, "fastq_dir"))
+            # Test handler
+            handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
+                                                    os.path.join(temp_directory, "backup_dir"), 
+                                                    os.path.join(temp_directory, "fastq_dir"),
+                                                    '', 
+                                                    '', 
+                                                    '')
+            # call clean_up
+            handler.clean_up()
+        # assert bcl_manager.remove_plate 
+        assert not bcl_manager.remove_plate.called
 
 if __name__ == '__main__':
     unittest.main()
