@@ -273,7 +273,7 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
-        log_disk_usage(event.src_path)
+        log_disk_usage(self.watch_dir)
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)  
 
