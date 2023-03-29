@@ -26,12 +26,12 @@ TODO: explain how illuminashae has been setup
 
 ### Data Management
 
-WARNING: There is no automated mechanism to delete data from the machine. Storage levels need to be monitored and managed by the server administrator (Richard Ellis at the time of writing). Failure to manage storage levels can result in loss of data and disruptions to service. 
+Data is automatically deleted from the machine after certain points - see below. However, storage levels need to be monitored by the server administrator (Richard Ellis at the time of writing) to ensure storage levels are adequate for ongoing service. 
 
 The key paths in `wey-001`:
-- `/Illumina/IncomingRuns/` - Incoming data from the Illumina machines to the SSD
-- `/Illumina/OutputFastq/BclRuns/` - Backup of the Bcl data onto the RAID storage
-- `/Illumina/OutputFastq/FastqRuns/` - Fastq data converted from Bcl. The fastq files along with a `meta.json` file (see below) are automatically uploaded to S3. 
+- `/Illumina/IncomingRuns/` - Incoming data from the Illumina machines to the SSD - run directories are removed after sucessful fastq extraction
+- `/Illumina/OutputFastq/BclRuns/` - Backup of the Bcl data onto the RAID storage - automatically removed after 3 weeks
+- `/Illumina/OutputFastq/FastqRuns/` - Fastq data converted from Bcl. The fastq files along with a `meta.json` file (see below) are automatically uploaded to S3 - autmatically removed after 3 weeks 
 
 Runs are stored within directories with formatted names: `YYMMDD_instrumentID_runnumber_flowcellID`. The fastq files are automatically uploaded to S3 according to project code, along with a `meta.json` file that contains metadata associated with the intstrument's run. This file makes it easier to search/access metadata associated with each batch of samples, form databases, and write automation routines. The json file has format (see example above):
 ```
