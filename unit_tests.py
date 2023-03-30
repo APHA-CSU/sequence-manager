@@ -167,7 +167,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 Inner function for return value of mocked 
                 os.path.getmtime(). The return value (age of the dir) is
                 dependent on the argument name of the directory. Return
-                values simulate directories of ages 32, 31 and 29 days.
+                values simulate directories of ages 23, 22 and 20 days.
             """
             # assert that bcl_manager.os.path.getmtime() is called on 
             # existing path
@@ -175,11 +175,11 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
             now = time.time()
             plate_name = os.path.basename(dirname)
             if plate_name == "plate_1":
-                return now - 2851200
+                return now - 1987200
             elif plate_name == "plate_2":
-                return now - 2764801
+                return now - 1900801
             elif plate_name == "plate_3":
-                return now - 2505601
+                return now - 1728001
             else:
                 raise Exception("not a valid mock plate name")
 
@@ -232,13 +232,13 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # reset call attributes of bcl_manager.os.path.getmtime mock
         bcl_manager.os.path.getmtime.reset_mock()
 
-        # Test removing no processed data as data < 30 days old
+        # Test removing no processed data as data < 21 days old
 
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
             now = time.time()
-            # side effects: current time less 29 days in seconds, i.e. 29 days 
+            # side effects: current time less 20 days in seconds, i.e. 20 days 
             # old
-            mock_getmtime.return_value = now - 2505601
+            mock_getmtime.return_value = now - 1728001
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
                 # 'mock-up' plates - raw bcl data
@@ -280,9 +280,9 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
             now = time.time()
-            # side effects: current time less 32 days in seconds, i.e. 32 days
+            # side effects: current time less 23 days in seconds, i.e. 23 days
             # old 
-            mock_getmtime.return_value = now - 2851200
+            mock_getmtime.return_value = now - 1987200
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
                 os.makedirs(os.path.join(temp_directory, "watch_dir/plate_1"))
