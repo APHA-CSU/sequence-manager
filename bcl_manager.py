@@ -9,6 +9,7 @@ import subprocess
 import re
 import glob
 from datetime import datetime
+import json
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -25,6 +26,8 @@ bcl_manager.py is a file-watcher that runs on wey-001 for automated:
 - Upload of .fastq files to S3 according to project code
 
 """
+
+SALMONELLA_PROJECT_CODES = ["FZ2000"]
 
 
 def convert_to_fastq(src_dir, dest_dir):
@@ -184,7 +187,6 @@ class BclEventHandler(FileSystemEventHandler):
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)
 
-
     def process_bcl_plate(self, src_path):
         """
             Processes a bcl plate.
@@ -246,6 +248,58 @@ class BclEventHandler(FileSystemEventHandler):
                         remove_plate([fastq_plate, backup_plate])
             except NotADirectoryError:
                 pass
+
+    def run_batch_pipelines(self, src_path, prefix):
+        """
+            Runs btb and salmonella pipelines for a single plate in AWS
+            batch
+        """
+        # TODO - dry
+        # Get run number of the plate
+        abs_src_path = os.path.join(os.path.dirname(os.path.abspath(src_path)),
+                                    "")
+        src_name = basename(abs_src_path[:-1])
+        # Local path of converted fastq data
+        fastq_path = os.path.join(self.fastq_dir, src_name, "")
+        # TODO - dry
+        # Extract run_id
+        match = re.search(r"(.+)_((.+)_(.+))_(.+)",
+                          basename(os.path.dirname(fastq_path)))
+        if not match:
+            raise Exception(f"Could not extract run number from {fastq_path}")
+        run_id = match.group(2)
+        # process each directory that contains fastq files
+        for dirname in glob.glob(fastq_path + "*/"):
+            # Skip if no fastq.gz in the directory
+            if not glob.glob(dirname + "*.fastq.gz"):
+                continue
+            # S3 source
+            project_code = basename(os.path.dirname(dirname))
+            reads_key = f'{os.path.join(prefix, "")}{project_code}/{run_id}'
+            if project_code in SALMONELLA_PROJECT_CODES:
+                logging.info(f"Submitting salmonella pipeline to AWS batch:\
+                             {reads_key}")
+                # Construct submission form for SCE-batch
+                submission_form = \
+                    ({"Name": run_id,
+                      "JobQueue": "ec2-p1-0-1-1",
+                      "JobDefinition": "csu-wgsprocessing-0-1-1:2",
+                      "Quantity": 1,
+                      "CPU": 4,
+                      "RAM_MB": 8192,
+                      "Command":
+                          ["python",
+                           "./plate/batch_process_plate.py",
+                           "-s",
+                           f"s3://{self.fastq_bucket}/{reads_key}"
+                           "-t",
+                           f"s3://s3-csu-004/salmonella/{run_id}/"],
+                      "ENV": [],
+                      "PARAM": {}})
+                # Submit job to SCE-batch
+                utils.upload_json("s3-batch-gbgc-csu-wgsprocessing-0-1-1",
+                                  f"{run_id}.scebatch", self.s3_endpoint_url,
+                                  submission_form)
 
     def on_created(self, event):
         """Called when a file or directory is created.
