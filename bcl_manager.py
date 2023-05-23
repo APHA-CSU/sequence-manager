@@ -249,7 +249,7 @@ class BclEventHandler(FileSystemEventHandler):
             except NotADirectoryError:
                 pass
 
-    def run_salmonella_pipeline(self, src_path, prefix):
+    def run_salmonella_pipeline(self, src_path):
         """
             Runs salmonella pipelines for a single plate in AWS batch
         """
@@ -274,7 +274,8 @@ class BclEventHandler(FileSystemEventHandler):
                 continue
             # S3 source
             project_code = basename(os.path.dirname(dirname))
-            reads_key = f'{os.path.join(prefix, "")}{project_code}/{run_id}'
+            reads_key = \
+                f'{os.path.join(self.fastq_key, "")}{project_code}/{run_id}'
             if project_code in SALMONELLA_PROJECT_CODES:
                 logging.info(f"Submitting salmonella pipeline to AWS batch:\
                              {reads_key}")
@@ -319,11 +320,14 @@ class BclEventHandler(FileSystemEventHandler):
         try:
             logging.info('Processing new plate: %s' % event.src_path)
             self.process_bcl_plate(event.src_path)
-            self.run_salmonella_pipeline(event.src_path, self.fastq_key)
-
         except Exception as e:
             logging.exception(e)
             raise e
+        try:
+            self.run_salmonella_pipeline(event.src_path)
+        # TODO: raise exception as above - can just have "self.run_salmonella_pipeline()" in the same try/catch block
+        except Exception as e:
+            logging.exception(e)
 
         # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
