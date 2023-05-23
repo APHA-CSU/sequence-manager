@@ -9,7 +9,6 @@ import subprocess
 import re
 import glob
 from datetime import datetime
-import json
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
