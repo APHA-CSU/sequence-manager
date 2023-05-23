@@ -249,10 +249,9 @@ class BclEventHandler(FileSystemEventHandler):
             except NotADirectoryError:
                 pass
 
-    def run_batch_pipelines(self, src_path, prefix):
+    def run_salmonella_pipeline(self, src_path, prefix):
         """
-            Runs btb and salmonella pipelines for a single plate in AWS
-            batch
+            Runs salmonella pipelines for a single plate in AWS batch
         """
         # TODO - dry
         # Get run number of the plate
@@ -320,6 +319,7 @@ class BclEventHandler(FileSystemEventHandler):
         try:
             logging.info('Processing new plate: %s' % event.src_path)
             self.process_bcl_plate(event.src_path)
+            self.run_salmonella_pipeline(event.src_path, self.fastq_key)
 
         except Exception as e:
             logging.exception(e)
