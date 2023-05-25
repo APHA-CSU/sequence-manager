@@ -59,10 +59,10 @@ def copy(src_dir, dest_dir):
 def upload(fastq_bucket, s3_endpoint_url, key, project_code, instrument_id,
            run_number, run_id, flowcell_id, sequence_date, dirname):
     """
-        Upload every subdirectory under src_dir that contains fastq.gz files to S3.
-        Files are stored with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+        Uploads dirname to S3. Files are stored with URI:
+        s3://{fastq_bucket}/{key}/{project_code}/{run_number}/{project_code}/
 
-        The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
+        The dir_name should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
 
         The project_code is the name of the subdirectory that contains the fastq files.
 
@@ -195,7 +195,8 @@ class BclEventHandler(FileSystemEventHandler):
     def process_bcl_plate(self, event):
         """
             Processes a bcl plate.
-            Copies, converts to fastq and uploads to AWS
+            Copies, converts to fastq, uploads to SCE and runs the
+            Salmonella pipeline in AWS batch
         """
         backup_path = os.path.join(self.backup_dir, event.src_name, "")
 
@@ -206,27 +207,31 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Converting to fastq: {event.fastq_path}')
         convert_to_fastq(event.abs_src_path, event.fastq_path)
         
+        # Upload to SCE and run Salmonella pipeline
         self.process_projects(event)
 
         # remove all plates where the processed data is older than 30 days
         self.clean_up()
     
     def process_projects(self, event):
+        """
+            Isolates projects codes and processes accordingly.
+            Uploads to SCE and runs Salmonella pipeline on plates
+            containing Salmonella data
+        """
         # Extract metadata
         match = re.search(r'(.+)_((.+)_(.+))_(.+)',
                           basename(os.path.dirname(event.fastq_path)))
-
         if not match:
             raise Exception(f'Could not extract run number from \
                             {event.fastq_path}')
-
         sequence_date = datetime.strptime(match.group(1), r'%y%m%d')
         run_id = match.group(2)
         instrument_id = match.group(3)
         run_number = match.group(4)
         flowcell_id = match.group(5)
-        
-        logging.info(f'Uploading {event.fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
+        logging.info(f'Uploading {event.fastq_path} to \
+                       s3://{self.fastq_bucket}/{self.fastq_key}')
         # Upload each directory that contains fastq files
         for dirname in glob.glob(event.fastq_path + '*/'):
             # Skip if no fastq.gz in the directory
@@ -238,12 +243,15 @@ class BclEventHandler(FileSystemEventHandler):
             upload(self.fastq_bucket, self.s3_endpoint_url, key, project_code,
                    instrument_id, run_number, run_id, flowcell_id,
                    sequence_date, dirname)
+            # Run Salmonella WGS pipeline on plates containing
+            # Salmonella data
             if project_code in SALMONELLA_PROJECT_CODES:
                 logging.info(f'Running Salmonella WGS pipeline on plate\
                               {run_id}')
                 run_salmonella_pipeline(run_id, self.fastq_bucket, key,
                                         self.s3_endpoint_url)
 
+    # TODO: maybe break out of the class and have as a separate function
     def clean_up(self):
         """
             Runs through all fully processed plates and deletes bcl data
