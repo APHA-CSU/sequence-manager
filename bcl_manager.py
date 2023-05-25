@@ -55,7 +55,9 @@ def copy(src_dir, dest_dir):
    
     shutil.copytree(src_dir, dest_dir)
 
-def upload(src_path, bucket, prefix, s3_endpoint_url):
+
+def upload(fastq_bucket, s3_endpoint_url, key, project_code, instrument_id,
+           run_number, run_id, flowcell_id, sequence_date, dirname):
     """
         Upload every subdirectory under src_dir that contains fastq.gz files to S3.
         Files are stored with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
@@ -75,69 +77,19 @@ def upload(src_path, bucket, prefix, s3_endpoint_url):
             "upload_time": string
         }       
     """
+    # Upload
+    utils.upload_json(fastq_bucket,
+                        f"{key}/meta.json",
+                        s3_endpoint_url, 
+                        {"project_code": project_code,
+                        "instrument_id": instrument_id,
+                        "run_number": run_number,
+                        "run_id": run_id,
+                        "flowcell_id": flowcell_id, 
+                        "sequence_date": str(sequence_date.date()),
+                        "upload_time": str(datetime.now())})
+    utils.s3_sync(dirname, fastq_bucket, key, s3_endpoint_url)
 
-    # Add trailing slash
-    prefix = os.path.join(prefix, '')
-    src_path = os.path.join(src_path, '')
-
-    # Extract metadata
-    match = re.search(r'(.+)_((.+)_(.+))_(.+)', basename(os.path.dirname(src_path)))
-
-    if not match:
-        raise Exception(f'Could not extract run number from {src_path}')
-
-    sequence_date = datetime.strptime(match.group(1), r'%y%m%d')
-    run_id = match.group(2)
-    instrument_id = match.group(3)
-    run_number = match.group(4)
-    flowcell_id = match.group(5)
-
-    # Upload each directory that contains fastq files
-    for dirname in glob.glob(src_path + '*/'):
-        # Skip if no fastq.gz in the directory
-        if not glob.glob(dirname + '*.fastq.gz'):
-            continue        
-
-        # S3 target
-        project_code = basename(os.path.dirname(dirname))
-        key = f'{prefix}{project_code}/{run_id}'
-
-        # Upload
-        utils.upload_json(bucket, f"{key}/meta.json", s3_endpoint_url, {
-            "project_code": project_code,
-            "instrument_id": instrument_id,
-            "run_number": run_number,
-            "run_id": run_id,
-            "flowcell_id": flowcell_id, 
-            "sequence_date": str(sequence_date.date()),
-            "upload_time": str(datetime.now())
-        })
-        utils.s3_sync(dirname, bucket, key, s3_endpoint_url)
-
-def monitor_disk_usage(filepath):
-    total, used, free = shutil.disk_usage(filepath)
-    return (total, free)
-        
-def log_disk_usage(filepath):
-    """
-        Logs the level of free space in gb for the fileystem the filepath is mounted on
-    """
-    total, free = monitor_disk_usage(filepath)
-    free_gb = free / 1024**3
-
-    logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
-
-def remove_plate(plate_paths):
-    """
-        Deletes the directory tree at the paths in each element of 
-        'plate_paths' (list)
-    """
-    try:
-        for path in plate_paths:
-            shutil.rmtree(path)
-            logging.info(f"Removing old data: '{path}'")
-    except PermissionError as e:
-        logging.info(f"Cannot delete. {e}")
 
 def run_salmonella_pipeline(run_id, fastq_bucket, key, s3_endpoint_url):
     """
@@ -164,6 +116,34 @@ def run_salmonella_pipeline(run_id, fastq_bucket, key, s3_endpoint_url):
     utils.upload_json("s3-batch-gbgc-csu-wgsprocessing-0-1-1",
                         f"{run_id}.scebatch", s3_endpoint_url,
                         submission_form)
+
+
+def monitor_disk_usage(filepath):
+    total, used, free = shutil.disk_usage(filepath)
+    return (total, free)
+        
+
+def log_disk_usage(filepath):
+    """
+        Logs the level of free space in gb for the fileystem the filepath is mounted on
+    """
+    total, free = monitor_disk_usage(filepath)
+    free_gb = free / 1024**3
+
+    logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
+
+
+def remove_plate(plate_paths):
+    """
+        Deletes the directory tree at the paths in each element of 
+        'plate_paths' (list)
+    """
+    try:
+        for path in plate_paths:
+            shutil.rmtree(path)
+            logging.info(f"Removing old data: '{path}'")
+    except PermissionError as e:
+        logging.info(f"Cannot delete. {e}")
 
 
 class BclEventHandler(FileSystemEventHandler):
@@ -226,33 +206,12 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Converting to fastq: {event.fastq_path}')
         convert_to_fastq(event.abs_src_path, event.fastq_path)
         
-        logging.info(f'Uploading {event.fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
-        upload(event.fastq_path, self.fastq_bucket, self.fastq_key, self.s3_endpoint_url)
+        self.process_projects(event)
 
         # remove all plates where the processed data is older than 30 days
         self.clean_up()
-
-    def upload(self, event):
-        """
-            Upload every subdirectory under src_dir that contains fastq.gz files to S3.
-            Files are stored with URI: s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
-
-            The src_path should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
-
-            The project_code is the name of the subdirectory that contains the fastq files.
-
-            A meta.json file is also uploaded to each project_code with schema:
-            {
-                "project_code": string,
-                "instrument_id": string,
-                "run_number": string,
-                "run_id": string",
-                "flowcell_id": string,
-                "sequence_date": string,
-                "upload_time": string
-            }       
-        """
-
+    
+    def process_projects(self, event):
         # Extract metadata
         match = re.search(r'(.+)_((.+)_(.+))_(.+)',
                           basename(os.path.dirname(event.fastq_path)))
@@ -266,33 +225,22 @@ class BclEventHandler(FileSystemEventHandler):
         instrument_id = match.group(3)
         run_number = match.group(4)
         flowcell_id = match.group(5)
-
+        
+        logging.info(f'Uploading {event.fastq_path} to s3://{self.fastq_bucket}/{self.fastq_key}')
         # Upload each directory that contains fastq files
         for dirname in glob.glob(event.fastq_path + '*/'):
             # Skip if no fastq.gz in the directory
             if not glob.glob(dirname + '*.fastq.gz'):
                 continue        
-
             # S3 target
             project_code = basename(os.path.dirname(dirname))
             key = f'{self.fastq_key}{project_code}/{run_id}'
-
-            # Upload
-            utils.upload_json(self.fastq_bucket,
-                              f"{key}/meta.json",
-                              self.s3_endpoint_url, 
-                              {"project_code": project_code,
-                               "instrument_id": instrument_id,
-                               "run_number": run_number,
-                               "run_id": run_id,
-                               "flowcell_id": flowcell_id, 
-                               "sequence_date": str(sequence_date.date()),
-                               "upload_time": str(datetime.now())})
-            utils.s3_sync(dirname, self.bucket, key, self.s3_endpoint_url)
+            upload(key, project_code, instrument_id, run_number, run_id,
+                   flowcell_id, sequence_date, dirname)
             if project_code in SALMONELLA_PROJECT_CODES:
-                run_salmonella_pipeline(run_id,
-                                        self.fastq_bucket,
-                                        key,
+                logging.info(f'Running Salmonella WGS pipeline on plate\
+                              {run_id}')
+                run_salmonella_pipeline(run_id, self.fastq_bucket, key,
                                         self.s3_endpoint_url)
 
     def clean_up(self):
@@ -361,11 +309,6 @@ class BclEventHandler(FileSystemEventHandler):
         except Exception as e:
             logging.exception(e)
             raise e
-        try:
-            self.run_salmonella_pipeline(event)
-        # TODO: raise exception as above - can just have "self.run_salmonella_pipeline()" in the same try/catch block
-        except Exception as e:
-            logging.exception(e)
 
         # Log remaining disk space
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
