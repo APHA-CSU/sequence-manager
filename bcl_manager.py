@@ -197,7 +197,7 @@ class BclEventHandler(FileSystemEventHandler):
             Processes a bcl plate.
             Copies, converts to fastq and uploads to AWS
         """
-        backup_path = self.backup_dir + event.src_name + '/'
+        backup_path = os.path.join(self.backup_dir, event.src_name, "")
 
         # Process
         logging.info(f'Backing up Raw Bcl Run: {backup_path}')
@@ -234,9 +234,10 @@ class BclEventHandler(FileSystemEventHandler):
                 continue        
             # S3 target
             project_code = basename(os.path.dirname(dirname))
-            key = f'{self.fastq_key}{project_code}/{run_id}'
-            upload(key, project_code, instrument_id, run_number, run_id,
-                   flowcell_id, sequence_date, dirname)
+            key = os.path.join(self.fastq_key, project_code, run_id)
+            upload(self.fastq_bucket, self.s3_endpoint_url, key, project_code,
+                   instrument_id, run_number, run_id, flowcell_id,
+                   sequence_date, dirname)
             if project_code in SALMONELLA_PROJECT_CODES:
                 logging.info(f'Running Salmonella WGS pipeline on plate\
                               {run_id}')
@@ -305,7 +306,7 @@ class BclEventHandler(FileSystemEventHandler):
         # log if anything fails
         try:
             logging.info('Processing new plate: %s' % event.src_path)
-            self.process_bcl_plate(event.src_path)
+            self.process_bcl_plate(event)
         except Exception as e:
             logging.exception(e)
             raise e
