@@ -203,9 +203,28 @@ class BclEventHandler(FileSystemEventHandler):
 
     def upload(self, event):
         """
-            Isolates projects codes and processes accordingly.
-            Uploads to SCE and runs Salmonella pipeline on plates
-            containing Salmonella data
+            Upload every subdirectory under src_dir that contains
+            fastq.gz files to S3.
+            Files are stored with URI:
+            s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+
+            The src_path should reference a directory with format
+            yymmdd_instrumentID_runnumber_flowcellID/
+
+            The project_code is the name of the subdirectory that
+            contains the fastq files.
+
+            A meta.json file is also uploaded to each project_code with
+            schema:
+            {
+                "project_code": string,
+                "instrument_id": string,
+                "run_number": string,
+                "run_id": string",
+                "flowcell_id": string,
+                "sequence_date": string,
+                "upload_time": string
+            }
         """
         # Extract metadata
         match = re.search(r'(.+)_((.+)_(.+))_(.+)',
