@@ -181,12 +181,12 @@ class BclEventHandler(FileSystemEventHandler):
         convert_to_fastq(event.abs_src_path, event.fastq_path)
         
         # Upload to SCE and run Salmonella pipeline
-        self.process_projects(event)
+        self.upload(event)
 
         # remove all plates where the processed data is older than 30 days
         self.clean_up()
     
-    def process_projects(self, event):
+    def upload(self, event):
         """
             Isolates projects codes and processes accordingly.
             Uploads to SCE and runs Salmonella pipeline on plates
@@ -213,9 +213,18 @@ class BclEventHandler(FileSystemEventHandler):
             # S3 target
             project_code = basename(os.path.dirname(dirname))
             key = os.path.join(self.fastq_key, project_code, run_id)
-            upload(self.fastq_bucket, self.s3_endpoint_url, key, project_code,
-                   instrument_id, run_number, run_id, flowcell_id,
-                   sequence_date, dirname)
+            # Upload
+            utils.upload_json(self.fastq_bucket,
+                              f"{key}/meta.json",
+                              self.s3_endpoint_url, 
+                              {"project_code": project_code,
+                               "instrument_id": instrument_id,
+                               "run_number": run_number,
+                               "run_id": run_id,
+                               "flowcell_id": flowcell_id, 
+                               "sequence_date": str(sequence_date.date()),
+                               "upload_time": str(datetime.now())})
+            utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
 
     # TODO: maybe break out of the class and have as a separate function
     def clean_up(self):
