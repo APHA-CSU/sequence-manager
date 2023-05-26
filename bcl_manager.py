@@ -156,6 +156,16 @@ def remove_plate(plate_paths):
         logging.info(f"Cannot delete. {e}")
 
 
+def is_subdirectory(filepath1, filepath2):
+    """
+        Checks if path1 is a subdirectory of path2
+    """
+    path1 = Path(os.path.abspath(filepath1))
+    path2 = Path(os.path.abspath(filepath2))
+
+    return path2 in path1.parents or path1 == path2
+
+
 class BclEventHandler(FileSystemEventHandler):
     """
         Handles CopyComplete.txt created events 
@@ -299,15 +309,6 @@ class BclEventHandler(FileSystemEventHandler):
         log_disk_usage(self.watch_dir)
         log_disk_usage(self.fastq_dir)
         log_disk_usage(self.backup_dir)  
-
-def is_subdirectory(filepath1, filepath2):
-    """
-        Checks if path1 is a subdirectory of path2
-    """
-    path1 = Path(os.path.abspath(filepath1))
-    path2 = Path(os.path.abspath(filepath2))
-
-    return path2 in path1.parents or path1 == path2
 
 class SubdirectoryException(Exception):
     """ Use in start to signal errors that proctect against recursive file watching behaviour """
