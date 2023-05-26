@@ -98,7 +98,7 @@ def monitor_disk_usage(filepath):
 
 def log_disk_usage(filepath):
     """
-        Logs the level of free space in gb for the fileystem the filepath is mounted on
+        Logs the level of free space in gb for the filesystem the filepath is mounted on
     """
     total, free = monitor_disk_usage(filepath)
     free_gb = free / 1024**3
@@ -311,7 +311,7 @@ class BclEventHandler(FileSystemEventHandler):
         log_disk_usage(self.backup_dir)  
 
 class SubdirectoryException(Exception):
-    """ Use in start to signal errors that proctect against recursive file watching behaviour """
+    """ Use in start to signal errors that protect against recursive file watching behavior """
     pass
 
 def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url):
@@ -319,7 +319,7 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
         Watches a directory for CopyComplete.txt files
     """
     #  Ensure backup/fastq dirs are not subdirectories of watch_dir.
-    #    This causes catastrophic recursive behaviours
+    #    This causes catastrophic recursive behaviors
     if is_subdirectory(backup_dir, watch_dir):
         raise SubdirectoryException('Backup directory cannot be a subdirectory of the watch directory')
 
