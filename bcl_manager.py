@@ -43,7 +43,8 @@ def convert_to_fastq(src_dir, dest_dir):
     ]).returncode
 
     if return_code:
-        raise Exception('bcl-convert failed: %s'%(return_code))   
+        raise Exception('bcl-convert failed: %s' % (return_code))
+
 
 def copy(src_dir, dest_dir):
     """
@@ -51,50 +52,15 @@ def copy(src_dir, dest_dir):
     """
     # Make sure we are not overwriting anything!
     if os.path.isdir(os.path.abspath(dest_dir)):
-        raise Exception('Cannot backup Bcl, path exists: %s'%dest_dir)    
-   
+        raise Exception('Cannot backup Bcl, path exists: %s' % dest_dir)
+
     shutil.copytree(src_dir, dest_dir)
-
-
-def upload(fastq_bucket, s3_endpoint_url, key, project_code, instrument_id,
-           run_number, run_id, flowcell_id, sequence_date, dirname):
-    """
-        Uploads dirname to S3. Files are stored with URI:
-        s3://{fastq_bucket}/{key}/{project_code}/{run_number}/{project_code}/
-
-        The dir_name should reference a directory with format yymmdd_instrumentID_runnumber_flowcellID/
-
-        The project_code is the name of the subdirectory that contains the fastq files.
-
-        A meta.json file is also uploaded to each project_code with schema:
-        {
-            "project_code": string,
-            "instrument_id": string,
-            "run_number": string,
-            "run_id": string",
-            "flowcell_id": string,
-            "sequence_date": string,
-            "upload_time": string
-        }       
-    """
-    # Upload
-    utils.upload_json(fastq_bucket,
-                        f"{key}/meta.json",
-                        s3_endpoint_url, 
-                        {"project_code": project_code,
-                        "instrument_id": instrument_id,
-                        "run_number": run_number,
-                        "run_id": run_id,
-                        "flowcell_id": flowcell_id, 
-                        "sequence_date": str(sequence_date.date()),
-                        "upload_time": str(datetime.now())})
-    utils.s3_sync(dirname, fastq_bucket, key, s3_endpoint_url)
 
 
 def monitor_disk_usage(filepath):
     total, used, free = shutil.disk_usage(filepath)
     return (total, free)
-        
+
 
 def log_disk_usage(filepath):
     """
@@ -103,14 +69,14 @@ def log_disk_usage(filepath):
     total, free = monitor_disk_usage(filepath)
     free_gb = free / 1024**3
 
-    logging.info(f"Free space: (%.1f Gb) %s"%(free_gb, filepath))
+    logging.info("Free space: (%.1f Gb) %s" % (free_gb, filepath))
 
 
 def clean_up(fastq_dir, watch_dir, backup_dir):
     """
         Runs through all fully processed plates and deletes bcl data
-        from watch-dir (IncomingRuns). Also deletes fastq data from 
-        fastq_dir and backup bcl data from backup_dir (OutputFastq) 
+        from watch-dir (IncomingRuns). Also deletes fastq data from
+        fastq_dir and backup bcl data from backup_dir (OutputFastq)
         ONLY if any processed plate is older than 30 days. NOTE: this
         will only delete data if that plate has been fully processed.
     """
@@ -121,7 +87,7 @@ def clean_up(fastq_dir, watch_dir, backup_dir):
             # backup & fastq plates
             fastq_plate = os.path.join(fastq_dir, plate)
             fastq_contents = os.listdir(fastq_plate)
-            # ensure the folder matches processed plate format 
+            # ensure the folder matches processed plate format
             if "Logs" in fastq_contents and "Reports" in fastq_contents:
                 # bcl data
                 bcl_plate = os.path.join(watch_dir, plate)
@@ -130,8 +96,7 @@ def clean_up(fastq_dir, watch_dir, backup_dir):
                     remove_plate([bcl_plate])
                 # datetime of fastq processing for each plate
                 modified_date = \
-                        datetime.fromtimestamp(\
-                            os.path.getmtime(fastq_plate))
+                    datetime.fromtimestamp(os.path.getmtime(fastq_plate))
                 # age of the processed plate
                 age = today - modified_date
                 # delete processed, raw and backup files if processed
@@ -145,7 +110,7 @@ def clean_up(fastq_dir, watch_dir, backup_dir):
 
 def remove_plate(plate_paths):
     """
-        Deletes the directory tree at the paths in each element of 
+        Deletes the directory tree at the paths in each element of
         'plate_paths' (list)
     """
     try:
@@ -168,18 +133,17 @@ def is_subdirectory(filepath1, filepath2):
 
 class BclEventHandler(FileSystemEventHandler):
     """
-        Handles CopyComplete.txt created events 
+        Handles CopyComplete.txt created events
     """
 
-    def __init__(self, 
-        watch_dir,
-        backup_dir, 
-        fastq_dir, 
-        fastq_bucket, 
-        fastq_key, 
-        s3_endpoint_url,
-        copy_complete_filename='CopyComplete.txt'
-        ):
+    def __init__(self,
+                 watch_dir,
+                 backup_dir,
+                 fastq_dir,
+                 fastq_bucket,
+                 fastq_key,
+                 s3_endpoint_url,
+                 copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
         # Creation of this file indicates that an Illumina Machine has finished transferring
@@ -226,14 +190,14 @@ class BclEventHandler(FileSystemEventHandler):
 
         logging.info(f'Converting to fastq: {event.fastq_path}')
         convert_to_fastq(event.abs_src_path, event.fastq_path)
-        
+
         # Upload to SCE and run Salmonella pipeline
         self.upload(event)
 
         # remove all plates where the processed data is older than 30
         # days
         clean_up(self.fastq_dir, self.watch_dir, self.backup_dir)
-    
+
     def upload(self, event):
         """
             Isolates projects codes and processes accordingly.
@@ -257,19 +221,19 @@ class BclEventHandler(FileSystemEventHandler):
         for dirname in glob.glob(event.fastq_path + '*/'):
             # Skip if no fastq.gz in the directory
             if not glob.glob(dirname + '*.fastq.gz'):
-                continue        
+                continue
             # S3 target
             project_code = basename(os.path.dirname(dirname))
             key = os.path.join(self.fastq_key, project_code, run_id)
             # Upload
             utils.upload_json(self.fastq_bucket,
                               f"{key}/meta.json",
-                              self.s3_endpoint_url, 
+                              self.s3_endpoint_url,
                               {"project_code": project_code,
                                "instrument_id": instrument_id,
                                "run_number": run_number,
                                "run_id": run_id,
-                               "flowcell_id": flowcell_id, 
+                               "flowcell_id": flowcell_id,
                                "sequence_date": str(sequence_date.date()),
                                "upload_time": str(datetime.now())})
             utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
@@ -287,9 +251,9 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Check the filename
         if (ntpath.basename(event.src_path) != self.copy_complete_filename):
-            return        
+            return
 
-        # Extract run number of the plate 
+        # Extract run number of the plate
         event.abs_src_path = \
             os.path.join(os.path.dirname(os.path.abspath(event.src_path)), "")
         event.src_name = basename(event.abs_src_path[:-1])
@@ -308,27 +272,40 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info('New Illumina Plate Processed: %s' % event.src_path)
         log_disk_usage(self.watch_dir)
         log_disk_usage(self.fastq_dir)
-        log_disk_usage(self.backup_dir)  
+        log_disk_usage(self.backup_dir)
+
 
 class SubdirectoryException(Exception):
-    """ Use in start to signal errors that protect against recursive file watching behavior """
+    """
+        Use in start to signal errors that protect against recursive
+        file watching behavior
+    """
     pass
 
-def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url):
+
+def start(watch_dir,
+          backup_dir,
+          fastq_dir,
+          fastq_bucket,
+          fastq_key,
+          s3_endpoint_url):
     """
         Watches a directory for CopyComplete.txt files
     """
     #  Ensure backup/fastq dirs are not subdirectories of watch_dir.
     #    This causes catastrophic recursive behaviors
     if is_subdirectory(backup_dir, watch_dir):
-        raise SubdirectoryException('Backup directory cannot be a subdirectory of the watch directory')
+        raise SubdirectoryException("Backup directory cannot be a subdirectory \
+                                     of the watch directory")
 
     if is_subdirectory(fastq_dir, watch_dir):
-        raise SubdirectoryException('Fastq directory cannot be a subdirectory of the watch directory')
+        raise SubdirectoryException("Fastq directory cannot be a subdirectory \
+                                     of the watch directory")
 
     # Setup file watcher in a new thread
     observer = Observer()
-    handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint_url)
+    handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket,
+                              fastq_key, s3_endpoint_url)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
@@ -337,26 +314,44 @@ def start(watch_dir, backup_dir, fastq_dir, fastq_bucket, fastq_key, s3_endpoint
         --------------------
         BCL Manager Started
         --------------------
-        
+
         Bcl Watch Directory: {watch_dir}
         Backup Directory: {handler.backup_dir}
         Fastq Directory: {handler.fastq_dir}
-    """)    
+    """)
 
     # Sleep till exit
     observer.join()
 
+
 if __name__ == "__main__":
     # Parse
-    parser = argparse.ArgumentParser(description='Watch a directory for a creation of CopyComplete.txt files')
-    parser.add_argument('dir', nargs='?', default='/Illumina/IncomingRuns/', help='Watch directory')
-    parser.add_argument('--backup-dir', default='/Illumina/OutputFastq/BclRuns/', help='Where to backup data to')
-    parser.add_argument('--fastq-dir', default='/Illumina/OutputFastq/FastqRuns/', help='Where to put converted fastq data')
-    parser.add_argument('--s3-log-bucket', default='s3-csu-001', help='S3 Bucket to upload log file')
-    parser.add_argument('--s3-log-key', default='logs/bcl-manager.log', help='S3 Key to upload log file')
-    parser.add_argument('--s3-fastq-bucket', default='s3-csu-001', help='S3 Bucket to upload fastq files')
-    parser.add_argument('--s3-fastq-key', default='', help='S3 Key to upload fastq data')
-    parser.add_argument('--s3-endpoint-url', default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com', help='aws s3 endpoint url')
+    parser = argparse.ArgumentParser(description="Watch a directory for a \
+                                     creation of CopyComplete.txt files")
+    parser.add_argument('dir', nargs='?',
+                        default='/Illumina/IncomingRuns/',
+                        help='Watch directory')
+    parser.add_argument('--backup-dir',
+                        default='/Illumina/OutputFastq/BclRuns/',
+                        help='Where to backup data to')
+    parser.add_argument('--fastq-dir',
+                        default='/Illumina/OutputFastq/FastqRuns/',
+                        help='Where to put converted fastq data')
+    parser.add_argument('--s3-log-bucket',
+                        default='s3-csu-001',
+                        help='S3 Bucket to upload log file')
+    parser.add_argument('--s3-log-key',
+                        default='logs/bcl-manager.log',
+                        help='S3 Key to upload log file')
+    parser.add_argument('--s3-fastq-bucket',
+                        default='s3-csu-001',
+                        help='S3 Bucket to upload fastq files')
+    parser.add_argument('--s3-fastq-key',
+                        default='',
+                        help='S3 Key to upload fastq data')
+    parser.add_argument('--s3-endpoint-url',
+                        default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com',
+                        help='aws s3 endpoint url')
 
     args = parser.parse_args()
 
@@ -372,11 +367,9 @@ if __name__ == "__main__":
     )
 
     # Run
-    start(
-        args.dir, 
-        args.backup_dir, 
-        args.fastq_dir,
-        args.s3_fastq_bucket,
-        args.s3_fastq_key,
-        args.s3_endpoint_url
-    )
+    start(args.dir,
+          args.backup_dir,
+          args.fastq_dir,
+          args.s3_fastq_bucket,
+          args.s3_fastq_key,
+          args.s3_endpoint_url)
