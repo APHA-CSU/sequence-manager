@@ -64,7 +64,8 @@ def monitor_disk_usage(filepath):
 
 def log_disk_usage(filepath):
     """
-        Logs the level of free space in gb for the filesystem the filepath is mounted on
+        Logs the level of free space in gb for the filesystem the
+        filepath is mounted on
     """
     total, free = monitor_disk_usage(filepath)
     free_gb = free / 1024**3
@@ -146,8 +147,8 @@ class BclEventHandler(FileSystemEventHandler):
                  copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
-        # Creation of this file indicates that an Illumina Machine has finished transferring
-        # a plate of raw bcl reads
+        # Creation of this file indicates that an Illumina Machine has
+        # finished transferring a plate of raw bcl reads
         self.copy_complete_filename = copy_complete_filename
 
         # Directory to watch for new incoming bcl data
@@ -166,10 +167,12 @@ class BclEventHandler(FileSystemEventHandler):
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
-            raise Exception("Backup Directory does not exist: %s" % self.backup_dir)
+            raise Exception("Backup Directory does not exist: %s"
+                            % self.backup_dir)
 
         if not os.path.isdir(self.fastq_dir):
-            raise Exception("Fastq Directory does not exist: %s" % self.fastq_dir)
+            raise Exception("Fastq Directory does not exist: %s"
+                            % self.fastq_dir)
 
         # Log disk usage
         log_disk_usage(self.watch_dir)
@@ -360,11 +363,11 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[
-            logging.StreamHandler(),
-            S3LoggingHandler('./bcl-manager.log', args.s3_log_bucket, args.s3_log_key, args.s3_endpoint_url)
-        ]
-    )
+        handlers=[logging.StreamHandler(),
+                  S3LoggingHandler('./bcl-manager.log',
+                                   args.s3_log_bucket,
+                                   args.s3_log_key,
+                                   args.s3_endpoint_url)])
 
     # Run
     start(args.dir,
