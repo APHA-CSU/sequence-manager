@@ -91,33 +91,6 @@ def upload(fastq_bucket, s3_endpoint_url, key, project_code, instrument_id,
     utils.s3_sync(dirname, fastq_bucket, key, s3_endpoint_url)
 
 
-def run_salmonella_pipeline(run_id, fastq_bucket, key, s3_endpoint_url):
-    """
-        Runs salmonella pipelines for a single plate in AWS batch
-    """
-    # Construct submission form for SCE-batch
-    submission_form = \
-        ({"Name": run_id,
-            "JobQueue": "ec2-p1-0-1-1",
-            "JobDefinition": "csu-wgsprocessing-0-1-1:2",
-            "Quantity": 1,
-            "CPU": 4,
-            "RAM_MB": 8192,
-            "Command":
-                ["python",
-                 "./plate/batch_process_plate.py",
-                 "-s",
-                 f"s3://{fastq_bucket}/{key}"
-                 "-t",
-                 f"s3://s3-csu-004/salmonella/{run_id}/"],
-            "ENV": [],
-            "PARAM": {}})
-    # Submit job to SCE-batch
-    utils.upload_json("s3-batch-gbgc-csu-wgsprocessing-0-1-1",
-                        f"{run_id}.scebatch", s3_endpoint_url,
-                        submission_form)
-
-
 def monitor_disk_usage(filepath):
     total, used, free = shutil.disk_usage(filepath)
     return (total, free)
@@ -243,13 +216,6 @@ class BclEventHandler(FileSystemEventHandler):
             upload(self.fastq_bucket, self.s3_endpoint_url, key, project_code,
                    instrument_id, run_number, run_id, flowcell_id,
                    sequence_date, dirname)
-            # Run Salmonella WGS pipeline on plates containing
-            # Salmonella data
-            if project_code in SALMONELLA_PROJECT_CODES:
-                logging.info(f'Running Salmonella WGS pipeline on plate\
-                              {run_id}')
-                run_salmonella_pipeline(run_id, self.fastq_bucket, key,
-                                        self.s3_endpoint_url)
 
     # TODO: maybe break out of the class and have as a separate function
     def clean_up(self):
