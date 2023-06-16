@@ -194,7 +194,7 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Converting to fastq: {event.fastq_path}')
         convert_to_fastq(event.abs_src_path, event.fastq_path)
 
-        # Upload to SCE and run Salmonella pipeline
+        # upload to SCE and run Salmonella pipeline
         self.upload(event)
 
         # remove all plates where the processed data is older than 30
@@ -259,6 +259,8 @@ class BclEventHandler(FileSystemEventHandler):
                                "sequence_date": str(sequence_date.date()),
                                "upload_time": str(datetime.now())})
             utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
+            if project_code in SALMONELLA_PROJECT_CODES:
+                submit_batch_job(project_code, key)
 
     def on_created(self, event):
         """Called when a file or directory is created.
