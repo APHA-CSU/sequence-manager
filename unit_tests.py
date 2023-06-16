@@ -14,40 +14,40 @@ from bcl_manager import SubdirectoryException
 
 class TestBclManager(fake_filesystem_unittest.TestCase):
     def setUp(self):
-      """
-        Set up method
-      """
-      # use "fake" in-memory filesystem
-      self.setUpPyfakefs()
+        """
+            Set up method
+        """
+        # use "fake" in-memory filesystem
+        self.setUpPyfakefs()
 
     def tearDown(self):
-      """
-        Tear down method
-      """
-      pass
+        """
+            Tear down method
+        """
+        pass
 
     def test_handler_construction(self):
         # Succeeds when output directories exist
         bcl_manager.BclEventHandler('./', './', './', '', '', '')
 
-        # Raises exceptions when output directories do not exist 
+        # Raises exceptions when output directories do not exist
         with self.assertRaises(Exception):
             bcl_manager.BclEventHandler('./DOES_NOT_EXIST', './')
 
         with self.assertRaises(Exception):
             bcl_manager.BclEventHandler('./', './DOES_NOT_EXIST')
 
-    def test_on_create(self):
+    def test_on_created(self):
         """
             Assert the handler processes the event src_path correctly
         """
         # Mocking logging allows us to test that exceptions are logged
         bcl_manager.logging = MagicMock()
 
-        # Mocking disk_usage to return 0 free space every time it's called 
+        # Mocking disk_usage to return 0 free space every time it's called
         #    (it'd throw an exception on non-existent paths otherwise)
         bcl_manager.shutil.disk_usage = Mock()
-        bcl_manager.shutil.disk_usage.return_value = (0,0,0)
+        bcl_manager.shutil.disk_usage.return_value = (0, 0, 0)
 
         # Test handler
         handler = bcl_manager.BclEventHandler('./', './', './', '', '', '')
@@ -58,8 +58,8 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # Ignores non-CopyComplete events
         self.assertOnCreatedProcessing(handler, False, './notCopyComplete.txt')
         self.assertOnCreatedProcessing(handler, False, 'CopyComplete.txt/')
-        
-        # Processes CopyComplete events        
+
+        # Processes CopyComplete events
         self.assertOnCreatedProcessing(handler, True, '/some/absolute/path/to/CopyComplete.txt')
         self.assertOnCreatedProcessing(handler, True, './CopyComplete.txt')
 
@@ -77,7 +77,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
             Asserts the copy method does not overwrite directories
         """
         # Mocking shutil.copytree prevents any actual data from being copied during testing
-        bcl_manager.shutil.copytree = Mock() 
+        bcl_manager.shutil.copytree = Mock()
 
         with self.assertRaises(Exception):
             bcl_manager.copy('./', './')
@@ -85,7 +85,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         bcl_manager.copy('./', './DOES/NOT/EXIST/')
 
     def assertOnCreatedProcessing(self, handler, bcl_plate_processing_expected, src_path):
-        """ 
+        """
             Asserts whether BclEventHandler.on_created() calls process_bcl_plate()
         """
         # Mocking process_bcl_plate allows us to test if it was called
@@ -93,12 +93,13 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
         # Run a FileCreated event
         event = watchdog.events.FileCreatedEvent(src_path)
-        handler.on_created(event)        
+        handler.on_created(event)
 
         # Assert if process_bcl_plate() was called
         self.assertTrue(bcl_plate_processing_expected == handler.process_bcl_plate.called)
 
-    def test_start(self):
+    @unittest.mock.patch("bcl_manager.BclEventHandler")
+    def test_start(self, _):
         """
             Test the start
         """
@@ -106,7 +107,6 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         bcl_manager.logging = Mock()
         bcl_manager.Observer = Mock()
         bcl_manager.input = Mock()
-        bcl_manager.BclEventHandler = Mock()
 
         # This case should pass
         bcl_manager.start('./watch_dir/', './fastq_dir/', './backup_dir/', '', '', '')
@@ -139,37 +139,45 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
     def test_upload(self):
         # Test cases
-        good_src_path = '220401_instrumentID_runnumber_flowcellID'
-        bad_src_path = 'incorrectly-formatted'
-
+        class Event():
+            def __init__(self, fastq_path):
+                self.fastq_path = fastq_path
+        good_event = Event("220401_instrumentID_runnumber_flowcellID/")
+        bad_event = Event("incorrectly-formatted/")
         # Mocks
         s3_sync_mock = Mock()
         bcl_manager.utils.s3_sync = s3_sync_mock
         bcl_manager.subprocess.run = Mock()
         bcl_manager.utils.boto3 = Mock()
-
         bcl_manager.glob.glob = Mock(return_value=["directory_name"])
+        # Mocking disk_usage to return 0 free space every time it's called
+        #    (it'd throw an exception on non-existent paths otherwise)
+        bcl_manager.shutil.disk_usage = Mock()
+        bcl_manager.shutil.disk_usage.return_value = (0, 0, 0)
+
+        # Test handler
+        handler = bcl_manager.BclEventHandler("./", "./", "./", "", "", "")
 
         # Successful upload
-        bcl_manager.upload(good_src_path, '', '', '')
+        handler.upload(good_event)
 
         # Raises error if src_path is incorrectly formatted
         with self.assertRaises(Exception):
-            bcl_manager.upload(bad_src_path, '', '', '')
+            handler.upload(bad_event)
 
-    def test_clean_up(self):#, mock_remove_plate):
+    def test_clean_up(self):
         """
             Test removing old plates
         """
 
         def mock_getmtime_returns(dirname):
             """
-                Inner function for return value of mocked 
+                Inner function for return value of mocked
                 os.path.getmtime(). The return value (age of the dir) is
                 dependent on the argument name of the directory. Return
                 values simulate directories of ages 23, 22 and 20 days.
             """
-            # assert that bcl_manager.os.path.getmtime() is called on 
+            # assert that bcl_manager.os.path.getmtime() is called on
             # existing path
             self.assertTrue(os.path.exists(dirname))
             now = time.time()
@@ -191,7 +199,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         # 30 days old
 
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
-            # side effects: current time less 32 days; 31 days; 29 days (in 
+            # side effects: current time less 32 days; 31 days; 29 days (in
             # sconds), i.e. simulating plates of 32, 31 and 29 days old
             mock_getmtime.side_effect = lambda x: mock_getmtime_returns(x)
             # use a temporary directory as a 'sandbox'
@@ -211,19 +219,16 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2/Logs"))
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3/Reports"))
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3/Logs"))
-                # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"),
-                                                        os.path.join(temp_directory, "backup_dir"),
-                                                        os.path.join(temp_directory, "fastq_dir"),
-                                                        '', 
-                                                        '', 
-                                                        '')
                 # call clean_up
-                handler.clean_up()
+                bcl_manager.clean_up(os.path.join(temp_directory, "fastq_dir"),
+                                     os.path.join(temp_directory, "watch_dir"),
+                                     os.path.join(temp_directory, "backup_dir"))
         correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
-                         call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_1"),
+                               os.path.join(temp_directory, "backup_dir/plate_1")]),
                          call([os.path.join(temp_directory, "watch_dir/plate_2")]),
-                         call([os.path.join(temp_directory, "fastq_dir/plate_2"), os.path.join(temp_directory, "backup_dir/plate_2")]),
+                         call([os.path.join(temp_directory, "fastq_dir/plate_2"),
+                               os.path.join(temp_directory, "backup_dir/plate_2")]),
                          call([os.path.join(temp_directory, "watch_dir/plate_3")])]
         # assert correct calls regardless of order
         self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
@@ -236,7 +241,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
 
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
             now = time.time()
-            # side effects: current time less 20 days in seconds, i.e. 20 days 
+            # side effects: current time less 20 days in seconds, i.e. 20 days
             # old
             mock_getmtime.return_value = now - 1728001
             # use a temporary directory as a 'sandbox'
@@ -256,15 +261,10 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2/Logs"))
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3/Reports"))
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_3/Logs"))
-                # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                      os.path.join(temp_directory, "backup_dir"), 
-                                                      os.path.join(temp_directory, "fastq_dir"),
-                                                      '', 
-                                                      '', 
-                                                      '')
                 # call clean_up
-                handler.clean_up()
+                bcl_manager.clean_up(os.path.join(temp_directory, "fastq_dir"),
+                                     os.path.join(temp_directory, "watch_dir"),
+                                     os.path.join(temp_directory, "backup_dir"))
         correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
                          call([os.path.join(temp_directory, "watch_dir/plate_2")]),
                          call([os.path.join(temp_directory, "watch_dir/plate_3")])]
@@ -281,7 +281,7 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
         with patch("bcl_manager.os.path.getmtime") as mock_getmtime:
             now = time.time()
             # side effects: current time less 23 days in seconds, i.e. 23 days
-            # old 
+            # old
             mock_getmtime.return_value = now - 1987200
             # use a temporary directory as a 'sandbox'
             with tempfile.TemporaryDirectory() as temp_directory:
@@ -294,20 +294,16 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
                 os.makedirs(os.path.join(temp_directory, "fastq_dir/plate_2"))
                 # mock file instead of directory
                 pathlib.Path(os.path.join(temp_directory, "fastq_dir/plate_3")).touch()
-                # Test handler
-                handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                      os.path.join(temp_directory, "backup_dir"), 
-                                                      os.path.join(temp_directory, "fastq_dir"),
-                                                      '', 
-                                                      '', 
-                                                      '')
                 # call clean_up
-                handler.clean_up()
-        # assert bcl_manager.shutil.rmtree() is called only once with 
+                bcl_manager.clean_up(os.path.join(temp_directory, "fastq_dir"),
+                                     os.path.join(temp_directory, "watch_dir"),
+                                     os.path.join(temp_directory, "backup_dir"))
+        # assert bcl_manager.shutil.rmtree() is called only once with
         # 'fastq_dir/plate_1' filepath, i.e. skips filepaths that do not match
-        # plate format 
+        # plate format
         correct_calls = [call([os.path.join(temp_directory, "watch_dir/plate_1")]),
-                         call([os.path.join(temp_directory, "fastq_dir/plate_1"), os.path.join(temp_directory, "backup_dir/plate_1")])]
+                         call([os.path.join(temp_directory, "fastq_dir/plate_1"),
+                               os.path.join(temp_directory, "backup_dir/plate_1")])]
         # assert correct calls regardless of order
         self.assertCountEqual(correct_calls, bcl_manager.remove_plate.mock_calls)
         # assert NotADirectoryError is raised (plate_3)
@@ -325,17 +321,13 @@ class TestBclManager(fake_filesystem_unittest.TestCase):
             os.makedirs(os.path.join(temp_directory, "backup_dir/plate_1"))
             # create fastq_dir
             os.makedirs(os.path.join(temp_directory, "fastq_dir"))
-            # Test handler
-            handler = bcl_manager.BclEventHandler(os.path.join(temp_directory, "watch_dir"), 
-                                                    os.path.join(temp_directory, "backup_dir"), 
-                                                    os.path.join(temp_directory, "fastq_dir"),
-                                                    '', 
-                                                    '', 
-                                                    '')
             # call clean_up
-            handler.clean_up()
-        # assert bcl_manager.remove_plate 
+            bcl_manager.clean_up(os.path.join(temp_directory, "fastq_dir"),
+                                 os.path.join(temp_directory, "watch_dir"),
+                                 os.path.join(temp_directory, "backup_dir"))
+        # assert bcl_manager.remove_plate
         assert not bcl_manager.remove_plate.called
+
 
 if __name__ == '__main__':
     unittest.main()
