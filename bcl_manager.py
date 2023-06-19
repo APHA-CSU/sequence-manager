@@ -134,6 +134,23 @@ def is_subdirectory(filepath1, filepath2):
 
 def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                      submission_bucket, s3_endpoint_url):
+    """
+        Submits the Salmonella WGS pipeline to AWS batch running within
+        'SCE-batch' infrastructure.
+
+        Parameters:
+            reads_bucket (str): the s3 bucket where salmonella reads are
+                                stored
+            reads_key (str): the s3 key for the plate of reads
+            results_bucket (str): the s3 bucket for storing results
+            name (str): the s3 key to store the results under
+            submission_bucket (str): the s3 bucket for receiving aws
+                                     batch job submissions
+            s3_endpoint_url (str): the s3 endpoint url for the
+                                   submission bucket
+    """
+    reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
+    results_uri = f"s3://{os.path.join(results_bucket, name)}"
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
                        "JobDefinition": "csu-wgsprocessing-0-1-1:2",
@@ -143,9 +160,9 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                        "command": ["python",
                                    "./plate/batch_process_plate.py",
                                    "-s",
-                                   "s3://s3-csu-004/salmonella/test_isolate/", #os.path.join(reads_bucket, reads_key),
+                                   "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
                                    "-t",
-                                   "s3://s3-csu-004/salmonella/test_result/"], #os.path.join(results_bucket, name),
+                                   "s3://s3-csu-004/salmonella/test_result/"], #results_uri,
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
@@ -234,7 +251,7 @@ class BclEventHandler(FileSystemEventHandler):
             Upload every subdirectory under src_dir that contains
             fastq.gz files to S3.
             Files are stored with URI:
-            s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+            s3://{bucket}/{prefix}/{project_code}/{run_id}/
 
             The src_path should reference a directory with format
             yymmdd_instrumentID_runnumber_flowcellID/
