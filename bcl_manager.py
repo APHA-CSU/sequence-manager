@@ -146,14 +146,13 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
             name (str): the s3 key to store the results under
             submission_bucket (str): the s3 bucket for receiving aws
                                      batch job submissions
-            s3_endpoint_url (str): the s3 endpoint url for the
-                                   submission bucket
+            s3_endpoint_url (str): the s3 endpoint url
     """
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
-                       "JobDefinition": "csu-wgsprocessing-0-1-1:2",
+                       "JobDefinition": "salmonella-ec2-0-1-1:2",
                        "Quantity": 1,
                        "CPU": 4,
                        "RAM_MB": 8192,
@@ -167,7 +166,7 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
-                      submission_dict)
+                      submission_dict, profile="batch")
 
 
 class BclEventHandler(FileSystemEventHandler):
@@ -306,7 +305,8 @@ class BclEventHandler(FileSystemEventHandler):
             if project_code in SALMONELLA_PROJECT_CODES:
                 submit_batch_job(self.fastq_bucket, key,
                                  self.salm_results_bucket, run_id,
-                                 self.salm_submission_bucket)
+                                 self.salm_submission_bucket,
+                                 self.s3_endpoint_url)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -426,7 +426,7 @@ if __name__ == "__main__":
                         default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com',
                         help='aws s3 endpoint url for fastq file uploads')
     parser.add_argument('--salmonella-submission-bucket',
-                        default='s3-batch-gbgc-csu-wgsprocessing-0-1-1',
+                        default='s3-batch-cty3-salmonella-ec2-0-1-1',
                         help='S3 bucket for AWS batch submission forms')
     parser.add_argument('--salmonella-results-bucket',
                         default='s3-foo',
