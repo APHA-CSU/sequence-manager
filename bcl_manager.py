@@ -157,12 +157,13 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                        "Quantity": 1,
                        "CPU": 4,
                        "RAM_MB": 8192,
-                       "command": ["python",
-                                   "./plate/batch_process_plate.py",
-                                   "-s",
-                                   "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
-                                   "-t",
-                                   "s3://s3-csu-004/salmonella/test_result/"], #results_uri,
+                       "command": ["echo", f"{reads_uri}"],
+                       #"command": ["python",
+                       #            "./plate/batch_process_plate.py",
+                       #            "-s",
+                       #            "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
+                       #            "-t",
+                       #            "s3://s3-csu-004/salmonella/test_result/"], #results_uri,
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
@@ -183,7 +184,6 @@ class BclEventHandler(FileSystemEventHandler):
                  s3_endpoint_url,
                  salm_submission_bucket,
                  salm_results_bucket,
-                 salm_submission_s3_endpoint_url,
                  copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
@@ -208,7 +208,6 @@ class BclEventHandler(FileSystemEventHandler):
         # For running Salmonella pipeline in AWS batch
         self.salm_submission_bucket = salm_submission_bucket
         self.salm_results_bucket = salm_results_bucket
-        self.salm_submission_s3_endpoint_url = salm_submission_s3_endpoint_url
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -307,8 +306,7 @@ class BclEventHandler(FileSystemEventHandler):
             if project_code in SALMONELLA_PROJECT_CODES:
                 submit_batch_job(self.fastq_bucket, key,
                                  self.salm_results_bucket, run_id,
-                                 self.salm_submission_bucket,
-                                 self.salm_submission_s3_endpoint_url)
+                                 self.salm_submission_bucket)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -362,8 +360,7 @@ def start(watch_dir,
           fastq_key,
           s3_endpoint_url,
           salm_submission_bucket,
-          salm_results_bucket,
-          salm_s3_endpoint_url):
+          salm_results_bucket):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -381,8 +378,7 @@ def start(watch_dir,
     observer = Observer()
     handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket,
                               fastq_key, s3_endpoint_url,
-                              salm_submission_bucket, salm_results_bucket,
-                              salm_s3_endpoint_url)
+                              salm_submission_bucket, salm_results_bucket)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
@@ -435,9 +431,6 @@ if __name__ == "__main__":
     parser.add_argument('--salmonella-results-bucket',
                         default='s3-foo',
                         help='S3 bucket for Salmonella pipeline results')
-    parser.add_argument('--salmonella-s3-endpoint-url',
-                        default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com',
-                        help='aws s3 endpoint url for AWS batch submissions')
 
     args = parser.parse_args()
 
@@ -460,5 +453,4 @@ if __name__ == "__main__":
           args.s3_fastq_key,
           args.s3_endpoint_url,
           args.salmonella_submission_bucket,
-          args.salmonella_results_bucket,
-          args.salmonella_s3_endpoint_url)
+          args.salmonella_results_bucket)

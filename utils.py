@@ -51,7 +51,8 @@ def s3_sync(src_dir, bucket, key, s3_endpoint_url):
         raise Exception('aws s3 sync failed: %s' % (return_code))
 
 
-def upload_json(bucket, key, s3_endpoint_url, dictionary, indent=4):
+def upload_json(bucket, key, s3_endpoint_url, dictionary,
+                profile='default', indent=4):
     """
         Upload json data to s3
 
@@ -61,10 +62,14 @@ def upload_json(bucket, key, s3_endpoint_url, dictionary, indent=4):
         endpoint_url: S3 endpoint url
         indent: Number of indentation spaces in the json
     """
-    s3 = boto3.resource('s3', endpoint_url=s3_endpoint_url)
+    # set the aws profile
+    boto3.setup_default_session(profile_name=profile)
+    s3 = boto3.resource('s3', endpoint_url=s3_endpoint_url, profile=profile)
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
+    # reset the aws profile
+    boto3.setup_default_session(profile_name='default')
 
 
 def s3_download_file(bucket, key, dest, s3_endpoint_url):
