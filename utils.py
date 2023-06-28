@@ -64,7 +64,7 @@ def upload_json(bucket, key, s3_endpoint_url, dictionary,
     """
     # set the aws profile
     boto3.setup_default_session(profile_name=profile)
-    s3 = boto3.resource('s3', endpoint_url=s3_endpoint_url, profile=profile)
+    s3 = boto3.resource('s3', endpoint_url=s3_endpoint_url)
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))))
