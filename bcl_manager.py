@@ -132,6 +132,43 @@ def is_subdirectory(filepath1, filepath2):
     return path2 in path1.parents or path1 == path2
 
 
+def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
+                     submission_bucket, s3_endpoint_url):
+    """
+        Submits the Salmonella WGS pipeline to AWS batch running within
+        'SCE-batch' infrastructure.
+
+        Parameters:
+            reads_bucket (str): the s3 bucket where salmonella reads are
+                                stored
+            reads_key (str): the s3 key for the plate of reads
+            results_bucket (str): the s3 bucket for storing results
+            name (str): the s3 key to store the results under
+            submission_bucket (str): the s3 bucket for receiving aws
+                                     batch job submissions
+            s3_endpoint_url (str): the s3 endpoint url
+    """
+    reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
+    results_uri = f"s3://{os.path.join(results_bucket, name)}"
+    submission_dict = {"Name": name,
+                       "JobQueue": "ec2-p1-0-1-1",
+                       "JobDefinition": "salmonella-ec2-0-1-1:2",
+                       "Quantity": 1,
+                       "CPU": 4,
+                       "RAM_MB": 8192,
+                       "command": ["echo", f"{reads_uri}"],
+                       #"command": ["python",
+                       #            "./plate/batch_process_plate.py",
+                       #            "-s",
+                       #            "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
+                       #            "-t",
+                       #            "s3://s3-csu-004/salmonella/test_result/"], #results_uri,
+                       "ENV": [],
+                       "PARAM": {}}
+    utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
+                      submission_dict, profile="batch")
+
+
 class BclEventHandler(FileSystemEventHandler):
     """
         Handles CopyComplete.txt created events
@@ -144,6 +181,8 @@ class BclEventHandler(FileSystemEventHandler):
                  fastq_bucket,
                  fastq_key,
                  s3_endpoint_url,
+                 salm_submission_bucket,
+                 salm_results_bucket,
                  copy_complete_filename='CopyComplete.txt'):
         super(BclEventHandler, self).__init__()
 
@@ -164,6 +203,10 @@ class BclEventHandler(FileSystemEventHandler):
         self.fastq_bucket = fastq_bucket
         self.fastq_key = fastq_key
         self.s3_endpoint_url = s3_endpoint_url
+
+        # For running Salmonella pipeline in AWS batch
+        self.salm_submission_bucket = salm_submission_bucket
+        self.salm_results_bucket = salm_results_bucket
 
         # Make sure backup and fastq dirs exist
         if not os.path.isdir(self.backup_dir):
@@ -194,7 +237,7 @@ class BclEventHandler(FileSystemEventHandler):
         logging.info(f'Converting to fastq: {event.fastq_path}')
         convert_to_fastq(event.abs_src_path, event.fastq_path)
 
-        # Upload to SCE and run Salmonella pipeline
+        # upload to SCE and run Salmonella pipeline
         self.upload(event)
 
         # remove all plates where the processed data is older than 30
@@ -206,7 +249,7 @@ class BclEventHandler(FileSystemEventHandler):
             Upload every subdirectory under src_dir that contains
             fastq.gz files to S3.
             Files are stored with URI:
-            s3://{bucket}/{prefix}/{project_code}/{run_number}/{project_code}/
+            s3://{bucket}/{prefix}/{project_code}/{run_id}/
 
             The src_path should reference a directory with format
             yymmdd_instrumentID_runnumber_flowcellID/
@@ -259,6 +302,11 @@ class BclEventHandler(FileSystemEventHandler):
                                "sequence_date": str(sequence_date.date()),
                                "upload_time": str(datetime.now())})
             utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
+            if project_code in SALMONELLA_PROJECT_CODES:
+                submit_batch_job(self.fastq_bucket, key,
+                                 self.salm_results_bucket, run_id,
+                                 self.salm_submission_bucket,
+                                 self.s3_endpoint_url)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -310,7 +358,9 @@ def start(watch_dir,
           fastq_dir,
           fastq_bucket,
           fastq_key,
-          s3_endpoint_url):
+          s3_endpoint_url,
+          salm_submission_bucket,
+          salm_results_bucket):
     """
         Watches a directory for CopyComplete.txt files
     """
@@ -327,7 +377,8 @@ def start(watch_dir,
     # Setup file watcher in a new thread
     observer = Observer()
     handler = BclEventHandler(watch_dir, backup_dir, fastq_dir, fastq_bucket,
-                              fastq_key, s3_endpoint_url)
+                              fastq_key, s3_endpoint_url,
+                              salm_submission_bucket, salm_results_bucket)
     observer.schedule(handler, watch_dir, recursive=True)
 
     # Start File Watcher
@@ -373,7 +424,13 @@ if __name__ == "__main__":
                         help='S3 Key to upload fastq data')
     parser.add_argument('--s3-endpoint-url',
                         default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com',
-                        help='aws s3 endpoint url')
+                        help='aws s3 endpoint url for fastq file uploads')
+    parser.add_argument('--salmonella-submission-bucket',
+                        default='s3-batch-cty3-salmonella-ec2-0-1-1',
+                        help='S3 bucket for AWS batch submission forms')
+    parser.add_argument('--salmonella-results-bucket',
+                        default='s3-foo',
+                        help='S3 bucket for Salmonella pipeline results')
 
     args = parser.parse_args()
 
@@ -394,4 +451,6 @@ if __name__ == "__main__":
           args.fastq_dir,
           args.s3_fastq_bucket,
           args.s3_fastq_key,
-          args.s3_endpoint_url)
+          args.s3_endpoint_url,
+          args.salmonella_submission_bucket,
+          args.salmonella_results_bucket)

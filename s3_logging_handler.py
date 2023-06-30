@@ -1,7 +1,7 @@
 from logging import StreamHandler, Handler, FileHandler
 from pathlib import Path
 
-import boto3  
+import boto3
 
 class S3LoggingHandler(FileHandler):
 
@@ -22,7 +22,6 @@ class S3LoggingHandler(FileHandler):
             self.s3 = boto3.client("s3")
         else:
             self.s3 = boto3.client("s3", endpoint_url=endpoint_url)
-            
 
     def emit(self, record):
         """
@@ -33,4 +32,3 @@ class S3LoggingHandler(FileHandler):
 
         # Upload to S3
         self.s3.upload_file(self.baseFilename, self.bucket, self.key)
-
