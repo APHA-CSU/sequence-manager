@@ -150,6 +150,7 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
     """
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
+    logging.info(f"Submitting reads at {reads_uri} to AWS batch")
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
                        "JobDefinition": "salmonella-ec2-0-1-1:2",
@@ -273,15 +274,15 @@ class BclEventHandler(FileSystemEventHandler):
         match = re.search(r'(.+)_((.+)_(.+))_(.+)',
                           basename(os.path.dirname(event.fastq_path)))
         if not match:
-            raise Exception(f'Could not extract run number from \
-                            {event.fastq_path}')
+            raise Exception("Could not extract run number from "
+                            f"{event.fastq_path}")
         sequence_date = datetime.strptime(match.group(1), r'%y%m%d')
         run_id = match.group(2)
         instrument_id = match.group(3)
         run_number = match.group(4)
         flowcell_id = match.group(5)
-        logging.info(f'Uploading {event.fastq_path} to \
-                       s3://{self.fastq_bucket}/{self.fastq_key}')
+        logging.info(f"Uploading {event.fastq_path} to "
+                     f"s3://{self.fastq_bucket}/{self.fastq_key}")
         # Upload each directory that contains fastq files
         for dirname in glob.glob(event.fastq_path + '*/'):
             # Skip if no fastq.gz in the directory

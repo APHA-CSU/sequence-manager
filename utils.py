@@ -1,8 +1,21 @@
 import json
 import subprocess
+import contextlib
+from os import devnull
 
 import boto3
 import botocore
+
+
+@contextlib.contextmanager
+def silencer():
+    """
+        A context manager that redirects stdout and stderr to devnull
+    """
+    with open(devnull, "w") as fnull:
+        with contextlib.redirect_stderr(fnull) as err, \
+                contextlib.redirect_stdout(fnull) as out:
+            yield (err, out)
 
 
 def s3_object_exists(bucket, key, s3_endpoint_url):
@@ -63,14 +76,16 @@ def upload_json(bucket, key, s3_endpoint_url, dictionary,
         indent: Number of indentation spaces in the json
     """
     # set the aws profile
-    boto3.setup_default_session(profile_name=profile)
+    with silencer():
+        boto3.setup_default_session(profile_name=profile)
     s3 = boto3.resource('s3', endpoint_url=s3_endpoint_url)
     obj = s3.Object(bucket, key)
 
     obj.put(Body=(bytes(json.dumps(dictionary, indent=indent).encode('UTF-8'))),
             ACL="bucket-owner-full-control")
     # reset the aws profile
-    boto3.setup_default_session(profile_name='default')
+    with silencer():
+        boto3.setup_default_session(profile_name='default')
 
 
 def s3_download_file(bucket, key, dest, s3_endpoint_url):
