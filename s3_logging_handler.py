@@ -1,8 +1,8 @@
-from logging import FileHandler
+import logging
 
 import boto3
 
-class S3LoggingHandler(FileHandler):
+class S3LoggingHandler(logging.FileHandler):
 
     def __init__(self, filename, bucket, key, endpoint_url=None):
         """
@@ -14,6 +14,12 @@ class S3LoggingHandler(FileHandler):
         # S3 Target
         self.bucket = bucket
         self.key = key
+
+        # bit of a hack as botocore.credentials seems log changing
+        # credentials, which is not useful. This forces it to only log
+        # error messages 
+        boto3.set_stream_logger(name='botocore.credentials',
+                                level=logging.ERROR)
 
         # Endpoint Url is required to transfer from Weybridge to the SCE
         # However it is not required for transfers within the SCE
