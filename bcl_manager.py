@@ -132,8 +132,9 @@ def is_subdirectory(filepath1, filepath2):
     return path2 in path1.parents or path1 == path2
 
 
-def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
-                     submission_bucket, s3_endpoint_url):
+# TODO: remove in future PR
+def submit_batch_job_test(reads_bucket, reads_key, results_bucket, name,
+                          submission_bucket, s3_endpoint_url):
     """
         Submits the Salmonella WGS pipeline to AWS batch running within
         'SCE-batch' infrastructure.
@@ -160,10 +161,46 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                        "command": ["echo", f"{reads_uri}"],
                        #"command": ["python",
                        #            "./plate/batch_process_plate.py",
-                       #            "-s",
+                       #            "-i",
                        #            "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
-                       #            "-t",
-                       #            "s3://s3-csu-004/salmonella/test_result/"], #results_uri,
+                       #            "-o",
+                       #            f"s3://s3-ranch-050/{name}_{datetime.today().strftime('%Y%m%d%H%M%S')}/"] #results_uri,
+                       "ENV": [],
+                       "PARAM": {}}
+    utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
+                      submission_dict, profile="batch")
+
+
+def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
+                     submission_bucket, s3_endpoint_url):
+    """
+        Submits the Salmonella WGS pipeline to AWS batch running within
+        'SCE-batch' infrastructure. Results are uploaded to
+        s3://s3-ranch-050/{plate_name}_YYYYmmddHMS.
+
+        Parameters:
+            reads_bucket (str): the s3 bucket where salmonella reads are
+                                stored
+            reads_key (str): the s3 key for the plate of reads
+            results_bucket (str): the s3 bucket for storing results
+            name (str): the s3 key to store the results under
+            submission_bucket (str): the s3 bucket for receiving aws
+                                     batch job submissions
+            s3_endpoint_url (str): the s3 endpoint url
+    """
+    reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
+    results_uri = f"s3://{os.path.join(results_bucket, name)}_{datetime.today().strftime('%Y%m%d%H%M%S')}"
+    logging.info(f"Submitting reads at {reads_uri} to AWS batch")
+    submission_dict = {"Name": name,
+                       "JobQueue": "ec2-p1-0-1-1",
+                       "JobDefinition": "salmonella-ec2-0-1-1:2",
+                       "Quantity": 1,
+                       "CPU": 4,
+                       "RAM_MB": 8192,
+                       "command": ["python",
+                                   "./plate/batch_process_plate.py",
+                                   "-i", reads_uri,
+                                   "-o", results_uri],
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
@@ -174,7 +211,6 @@ class BclEventHandler(FileSystemEventHandler):
     """
         Handles CopyComplete.txt created events
     """
-
     def __init__(self,
                  watch_dir,
                  backup_dir,
@@ -304,10 +340,20 @@ class BclEventHandler(FileSystemEventHandler):
                                "upload_time": str(datetime.now())})
             utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
             if project_code in SALMONELLA_PROJECT_CODES:
-                submit_batch_job(self.fastq_bucket, key,
-                                 self.salm_results_bucket, run_id,
-                                 self.salm_submission_bucket,
-                                 self.s3_endpoint_url)
+                # tests "hello world" job to ensure salmonella plates
+                # are always picked up
+                submit_batch_job_test(self.fastq_bucket, key,
+                                      self.salm_results_bucket, run_id,
+                                      self.salm_submission_bucket,
+                                      self.s3_endpoint_url)
+            # test submitting small (5GB) plate: "M01765_0638" - these
+            # jobs will be submitted whenever there is a new plate.
+            # TODO: in future PR, ensure it's within the if statement
+            # above (line 342)
+            submit_batch_job(self.fastq_bucket, "FZ2000/M01765_0638/",
+                             self.salm_results_bucket, "M01765_0638",
+                             self.salm_submission_bucket,
+                             self.s3_endpoint_url)
 
     def on_created(self, event):
         """Called when a file or directory is created.
@@ -430,7 +476,7 @@ if __name__ == "__main__":
                         default='s3-batch-cty3-salmonella-ec2-0-1-1',
                         help='S3 bucket for AWS batch submission forms')
     parser.add_argument('--salmonella-results-bucket',
-                        default='s3-foo',
+                        default='s3-ranch-050',
                         help='S3 bucket for Salmonella pipeline results')
 
     args = parser.parse_args()
