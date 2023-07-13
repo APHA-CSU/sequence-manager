@@ -189,7 +189,7 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
             s3_endpoint_url (str): the s3 endpoint url
     """
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
-    results_uri = f"s3://{os.path.join(results_bucket, name)}_{datetime.today().strftime('%Y%m%d%H%M%S')}"
+    results_uri = f"s3://{os.path.join(results_bucket, name)}"
     logging.info(f"Submitting reads at {reads_uri} to AWS batch")
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
@@ -351,7 +351,8 @@ class BclEventHandler(FileSystemEventHandler):
             # TODO: in future PR, ensure it's within the if statement
             # above (line 342)
             submit_batch_job(self.fastq_bucket, "FZ2000/M01765_0638/",
-                             self.salm_results_bucket, "M01765_0638",
+                             self.salm_results_bucket,
+                             f"M01765_0638_{datetime.today().strftime('%Y%m%d%H%M%S')}",
                              self.salm_submission_bucket,
                              self.s3_endpoint_url)
 
