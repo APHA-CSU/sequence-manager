@@ -151,7 +151,7 @@ def submit_batch_job_test(reads_bucket, reads_key, results_bucket, name,
     """
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
-    logging.info(f"Submitting reads at {reads_uri} to AWS batch")
+    logging.info(f"Submitting to AWS batch: {reads_uri}")
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
                        "JobDefinition": "salmonella-ec2-0-1-1:2",
