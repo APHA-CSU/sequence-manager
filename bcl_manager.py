@@ -159,12 +159,6 @@ def submit_batch_job_test(reads_bucket, reads_key, results_bucket, name,
                        "CPU": 4,
                        "RAM_MB": 8192,
                        "command": ["echo", f"{reads_uri}"],
-                       #"command": ["python",
-                       #            "./plate/batch_process_plate.py",
-                       #            "-i",
-                       #            "s3://s3-csu-004/salmonella/test_isolate/", #reads_uri,
-                       #            "-o",
-                       #            f"s3://s3-ranch-050/{name}_{datetime.today().strftime('%Y%m%d%H%M%S')}/"] #results_uri,
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
@@ -190,17 +184,17 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
     """
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
-    logging.info(f"Submitting reads at {reads_uri} to AWS batch")
+    logging.info(f"Submitting to AWS batch: {reads_uri}")
     submission_dict = {"Name": name,
                        "JobQueue": "ec2-p1-0-1-1",
                        "JobDefinition": "salmonella-ec2-0-1-1:2",
                        "Quantity": 1,
                        "CPU": 4,
-                       "RAM_MB": 8192,
+                       "RAM_MB": 16384,
                        "command": ["python",
                                    "./plate/batch_process_plate.py",
-                                   "-i", reads_uri,
-                                   "-o", results_uri],
+                                   reads_uri,
+                                   results_uri],
                        "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
@@ -346,15 +340,22 @@ class BclEventHandler(FileSystemEventHandler):
                                       self.salm_results_bucket, run_id,
                                       self.salm_submission_bucket,
                                       self.s3_endpoint_url)
-            # test submitting small (5GB) plate: "M01765_0638" - these
-            # jobs will be submitted whenever there is a new plate.
+            # test submitting tiny plate (2 isolates): "M01765_0638" -
+            # these jobs will be submitted whenever there is a new
+            # plate.
             # TODO: in future PR, ensure it's within the if statement
-            # above (line 342)
-            submit_batch_job(self.fastq_bucket, "FZ2000/M01765_0638/",
+            # above (line 342), ensure first arg is set to 
+            # self.fastq_bucket and other args are set appropriately.
+            submit_batch_job("s3-ranch-050", "test_plate/",
                              self.salm_results_bucket,
-                             f"M01765_0638_{datetime.today().strftime('%Y%m%d%H%M%S')}",
+                             f"test_plate_{datetime.today().strftime('%Y%m%d%H%M%S')}",
                              self.salm_submission_bucket,
                              self.s3_endpoint_url)
+            #submit_batch_job(self.fastq_bucket, "FZ2000/M01765_0638/",
+            #                 self.salm_results_bucket,
+            #                 f"M01765_0638_{datetime.today().strftime('%Y%m%d%H%M%S')}",
+            #                 self.salm_submission_bucket,
+            #                 self.s3_endpoint_url)
 
     def on_created(self, event):
         """Called when a file or directory is created.
