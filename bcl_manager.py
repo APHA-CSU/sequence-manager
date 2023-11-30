@@ -334,28 +334,12 @@ class BclEventHandler(FileSystemEventHandler):
                                "upload_time": str(datetime.now())})
             utils.s3_sync(dirname, self.fastq_bucket, key, self.s3_endpoint_url)
             if project_code in SALMONELLA_PROJECT_CODES:
-                # tests "hello world" job to ensure salmonella plates
-                # are always picked up
-                submit_batch_job_test(self.fastq_bucket, key,
-                                      self.salm_results_bucket, run_id,
-                                      self.salm_submission_bucket,
-                                      self.s3_endpoint_url)
-            # test submitting tiny plate (2 isolates): "M01765_0638" -
-            # these jobs will be submitted whenever there is a new
-            # plate.
-            # TODO: in future PR, ensure it's within the if statement
-            # above (line 342), ensure first arg is set to 
-            # self.fastq_bucket and other args are set appropriately.
-            submit_batch_job("s3-ranch-050", "test_plate/",
-                             self.salm_results_bucket,
-                             f"test_plate_{datetime.today().strftime('%Y%m%d%H%M%S')}",
-                             self.salm_submission_bucket,
-                             self.s3_endpoint_url)
-            #submit_batch_job(self.fastq_bucket, "FZ2000/M01765_0638/",
-            #                 self.salm_results_bucket,
-            #                 f"M01765_0638_{datetime.today().strftime('%Y%m%d%H%M%S')}",
-            #                 self.salm_submission_bucket,
-            #                 self.s3_endpoint_url)
+                # submit salmonella Nextflow pipeline to AWS batch
+                submit_batch_job(self.fastq_bucket, key,
+                                 self.salm_results_bucket,
+                                 f"{run_id}_{datetime.today().strftime('%Y%m%d%H%M%S')}",
+                                 self.salm_submission_bucket,
+                                 self.s3_endpoint_url)
 
     def on_created(self, event):
         """Called when a file or directory is created.
