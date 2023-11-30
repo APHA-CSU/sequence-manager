@@ -132,39 +132,6 @@ def is_subdirectory(filepath1, filepath2):
     return path2 in path1.parents or path1 == path2
 
 
-# TODO: remove in future PR
-def submit_batch_job_test(reads_bucket, reads_key, results_bucket, name,
-                          submission_bucket, s3_endpoint_url):
-    """
-        Submits the Salmonella WGS pipeline to AWS batch running within
-        'SCE-batch' infrastructure.
-
-        Parameters:
-            reads_bucket (str): the s3 bucket where salmonella reads are
-                                stored
-            reads_key (str): the s3 key for the plate of reads
-            results_bucket (str): the s3 bucket for storing results
-            name (str): the s3 key to store the results under
-            submission_bucket (str): the s3 bucket for receiving aws
-                                     batch job submissions
-            s3_endpoint_url (str): the s3 endpoint url
-    """
-    reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
-    results_uri = f"s3://{os.path.join(results_bucket, name)}"
-    logging.info(f"Submitting to AWS batch: {reads_uri}")
-    submission_dict = {"Name": name,
-                       "JobQueue": "ec2-p1-0-1-1",
-                       "JobDefinition": "salmonella-ec2-0-1-1:2",
-                       "Quantity": 1,
-                       "CPU": 32,
-                       "RAM_MB": 125952,
-                       "Command": ["echo", f"{reads_uri}"],
-                       "ENV": [],
-                       "PARAM": {}}
-    utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
-                      submission_dict, profile="batch")
-
-
 def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
                      submission_bucket, s3_endpoint_url):
     """
