@@ -153,16 +153,14 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
     logging.info(f"Submitting to AWS batch: {reads_uri}")
     submission_dict = {"Name": name,
-                       "JobQueue": "ec2-p1-0-2-1",
-                       "JobDefinition": "salmonella-ec2-0-2-1:1",
                        "Quantity": 1,
                        "CPU": 32,
                        "RAM_MB": 125952,
+                       "ENV": [],
                        "Command": ["python",
                                    "./plate/batch_process_plate.py",
                                    reads_uri,
                                    results_uri],
-                       "ENV": [],
                        "PARAM": {}}
     utils.upload_json(submission_bucket, f"{name}.scebatch", s3_endpoint_url,
                       submission_dict, profile="batch")
