@@ -152,7 +152,7 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
     logging.info(f"Submitting to AWS batch: {reads_uri}")
-    submission_dict = {"SystemName": "salmonella-ec2",
+    submission_dict = {"SystemName": "salmonella-ec2-v4",
                        "Name": name,
                        "Quantity": 1,
                        "CPU": 32,
@@ -425,7 +425,7 @@ if __name__ == "__main__":
                         default='https://bucket.vpce-0a9b8c4b880602f6e-w4s7h1by.s3.eu-west-1.vpce.amazonaws.com',
                         help='aws s3 endpoint url for fastq file uploads')
     parser.add_argument('--salmonella-submission-bucket',
-                        default='s3-batch-kjpt-salmonella-ec2-0-2-1',
+                        default='s3-batch-jekk-salmonella-ec2-v4-2-4-0',
                         help='S3 bucket for AWS batch submission forms')
     parser.add_argument('--salmonella-results-bucket',
                         default='s3-ranch-050',
