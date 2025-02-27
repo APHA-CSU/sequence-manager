@@ -152,7 +152,7 @@ def submit_batch_job(reads_bucket, reads_key, results_bucket, name,
     reads_uri = f"s3://{os.path.join(reads_bucket, reads_key)}"
     results_uri = f"s3://{os.path.join(results_bucket, name)}"
     logging.info(f"Submitting to AWS batch: {reads_uri}")
-    submission_dict = {"SystemName": "salmonella-ec2-v2-2-4-5",
+    submission_dict = {"SystemName": "salmonella-ec2-v2",
                        "Name": name,
                        "Quantity": 1,
                        "CPU": 32,
